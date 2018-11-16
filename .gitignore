@@ -112,6 +112,10 @@ venv.bak/
 
 *.pyc
 
+/running
+/deploy.sh
+/gunicorn.pid
+
 /media
 /config
 /apps/apis/tests/
