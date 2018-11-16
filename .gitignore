@@ -115,3 +115,4 @@ venv.bak/
 /media
 /config
 /apps/apis/tests/
+/certificate/
