@@ -21,10 +21,10 @@ def push_notification(platform, bundle, token, message):
 	try:
 		if platform == 'apns':
 			user_apps, created = APNSDevice.objects.get_or_create(name=name, registration_id=token)
-			user_apps.send_message(message=message, sound='default', badge=0, content_available=1)
+			# user_apps.send_message(message=message, sound='default', content_available=1)
 		elif platform == 'fcm':
 			user_apps, created = GCMDevice.objects.get_or_create(name=name, registration_id=token)
-			user_apps.send_message(None, extra=message, use_fcm_notifications=False)
+			# user_apps.send_message(None, extra=message, use_fcm_notifications=False)
 		return True
 	except Exception:
 		pass

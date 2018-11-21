@@ -37,7 +37,8 @@ INSTALLED_APPS = [
 	'django.contrib.staticfiles',
 	'rest_framework.authtoken',
 	'push_notifications',
-	'apps.apis'
+	'apps.apis',
+	'apps.schedule',
 ]
 
 MIDDLEWARE = [

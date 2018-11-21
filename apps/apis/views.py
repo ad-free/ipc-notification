@@ -2,67 +2,134 @@
 from __future__ import unicode_literals
 
 from django.conf import settings
+from django.contrib.auth.hashers import make_password
 from django.db.models import Q
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 
-from ..apis.utils import APIAccessPermission, message_format, push_notification
+from django.contrib.auth.models import User
+from ..schedule.models import Schedule
+from push_notifications.models import GCMDevice, APNSDevice
+
+from ..apis.utils import APIAccessPermission, message_format
 from ..commons.utils import logger_format
 
 from functools import partial
 
 import time
 import logging
+import json
 
 logger = logging.getLogger('')
 
 
 @api_view(['POST'])
-@permission_classes((partial(APIAccessPermission, 'api_push_notification'),))
-def api_push_notification(request):
-	logger.info(logger_format('<-------  START  ------->', api_push_notification.__name__))
+@permission_classes((partial(APIAccessPermission, 'api_notification_register'),))
+def api_notification_register(request):
+	logger.info(logger_format('<-------  START  ------->', api_notification_register.__name__))
 	errors = {}
+	message = ''
+	username = request.POST.get('username', '').strip()
+	password = request.POST.get('password', '')
 	platform = request.POST.get('platform', '').strip()
 	token = request.POST.get('token', '').strip()
 	bundle = request.POST.get('bundle', '').strip()
 
-	logger.info(logger_format('Check platform', api_push_notification.__name__))
-	if not platform:
-		errors.update({'platform': _('This field is required.')})
-	logger.info(logger_format('Check token', api_push_notification.__name__))
-	if not token:
-		errors.update({'token': _('This field is required.')})
-	logger.info(logger_format('Check bundle', api_push_notification.__name__))
-	if not bundle:
-		errors.update({'bundle': _('This field is required.')})
+	logger.info(logger_format('Check bundle list', api_notification_register.__name__))
+	if platform in settings.BUNDLE_LIST.keys() and bundle in settings.BUNDLE_LIST[platform]:
+		obj_user, user_created = User.objects.update_or_create(username=username, defaults={'password': make_password(password)})
+		if user_created:
+			message = _('You have successfully registered.')
+			name = platform + '_' + bundle
+			if platform == 'apns':
+				APNSDevice.objects.create(name=name, registration_id=token, user=obj_user)
+			elif platform == 'fcm':
+				GCMDevice.objects.create(name=name, registration_id=token, user=obj_user, cloud_message_type='FCM')
 
-	logger.info(logger_format('Check the parameters include platform, token and bundle', api_push_notification.__name__))
-	if not errors:
-		logger.info(logger_format('Check bundle list', api_push_notification.__name__))
-		if platform in settings.BUNDLE_LIST.keys() and bundle in settings.BUNDLE_LIST[platform]:
-			message = message_format(
-				title='This is a title',
-				body='This is content message',
-				url='http://cmr.iotc.vn/inbox/1',
-				inbox_id=1,
-				time=time.time(),
-				serial='ds4x8z4xcajcw'
-			)
-			response = push_notification(platform, bundle, token, message)
-			if response:
-				logger.info(logger_format('<-------  END  ------->', api_push_notification.__name__))
-				return Response({
-					'status': status.HTTP_200_OK,
-					'result': True
-				}, status=status.HTTP_200_OK)
-			else:
-				errors.update({'message': _('Unable to send notification, please try again.')})
+		logger.info(logger_format('<-------  END  ------->', api_notification_register.__name__))
+		return Response({
+			'status': status.HTTP_200_OK,
+			'result': True,
+			'message': _('You have successfully updated your password.') if not message else message
+		}, status=status.HTTP_200_OK)
+	else:
+		errors.update({'message': _('Check out your mobile platform')})
+
+	logger.info(logger_format('<-------  START  ------->', api_notification_register.__name__))
+	return Response({
+		'status': status.HTTP_400_BAD_REQUEST,
+		'result': False,
+		'errors': errors
+	}, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes((partial(APIAccessPermission, 'api_notification_update'),))
+def api_notification_update(request):
+	logger.info(logger_format('<-------  START  ------->', api_notification_update.__name__))
+	errors = {}
+	message = ''
+	phone_number = request.POST.get('phone_number', '').strip()
+	serial = request.POST.get('serial', '').strip()
+	schedule = request.POST.get('schedule', '').strip()
+	is_active = request.POST.get('is_active', '').strip()
+
+	logger.info(logger_format('Check is_active', api_notification_update.__name__))
+	if int(is_active) == 1:
+		is_active = True
+	else:
+		is_active = False
+
+	try:
+		user = User.objects.get(username=phone_number)
+	except User.DoesNotExist:
+		errors.update({'message': _('User does not exists.')})
+	else:
+		obj_schedule, schedule_created = Schedule.objects.update_or_create(
+				user=user.username,
+				serial=serial,
+				defaults={'schedule': schedule, 'is_active': is_active}
+		)
+		logger.info(logger_format('Check schedule', api_notification_update.__name__))
+		if obj_schedule:
+			logger.info(logger_format('<-------  END  ------->', api_notification_update.__name__))
+			return Response({
+				'status': status.HTTP_200_OK,
+				'result': True,
+				'message': _('Update your schedule successfully.') if not message else message
+			}, status=status.HTTP_200_OK)
 		else:
-			errors.update({'message': _('Check out your mobile platform')})
+			errors.update({'message': _('Update your schedule unsuccessful.')})
 
-	logger.info(logger_format('<-------  START  ------->', api_push_notification.__name__))
+	logger.info(logger_format('<-------  END  ------->', api_notification_update.__name__))
+	return Response({
+		'status': status.HTTP_400_BAD_REQUEST,
+		'result': False,
+		'errors': errors
+	}, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes((partial(APIAccessPermission, 'api_notification_push'),))
+def api_notification_push(request):
+	logger.info(logger_format('<-------  START  ------->', api_notification_push.__name__))
+	errors = {}
+	serial = request.POST.get('serial', '').strip()
+
+	try:
+		obj_schedule = Schedule.objects.get(serial=serial)
+		obj_user = User.objects.get(username=obj_schedule.user)
+	except Schedule.DoesNotExist:
+		errors.update({'message': _('Schedule does not exists.')})
+	except User.DoesNotExist:
+		errors.update({'message': _('User does not exists.')})
+	else:
+		APNSDevice.objects.filter(user=obj_user)
+		GCMDevice.objects.filter(user=obj_user)
+
+	logger.info(logger_format('<-------  END  ------->', api_notification_push.__name__))
 	return Response({
 		'status': status.HTTP_400_BAD_REQUEST,
 		'result': False,
