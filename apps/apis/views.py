@@ -13,14 +13,12 @@ from django.contrib.auth.models import User
 from ..schedule.models import Schedule
 from push_notifications.models import GCMDevice, APNSDevice
 
-from ..apis.utils import APIAccessPermission, message_format
+from ..apis.utils import APIAccessPermission
 from ..commons.utils import logger_format
 
 from functools import partial
 
-import time
 import logging
-import json
 
 logger = logging.getLogger('')
 
@@ -38,7 +36,7 @@ def api_notification_register(request):
 	bundle = request.POST.get('bundle', '').strip()
 
 	logger.info(logger_format('Check bundle list', api_notification_register.__name__))
-	if platform in settings.BUNDLE_LIST.keys() and bundle in settings.BUNDLE_LIST[platform]:
+	if platform.lower() in settings.BUNDLE_LIST.keys() and bundle in settings.BUNDLE_LIST[platform]:
 		obj_user, user_created = User.objects.update_or_create(username=username, defaults={'password': make_password(password)})
 		if user_created:
 			message = _('You have successfully registered.')
@@ -71,7 +69,7 @@ def api_notification_update(request):
 	logger.info(logger_format('<-------  START  ------->', api_notification_update.__name__))
 	errors = {}
 	message = ''
-	phone_number = request.POST.get('phone_number', '').strip()
+	username = request.POST.get('username', '').strip()
 	serial = request.POST.get('serial', '').strip()
 	schedule = request.POST.get('schedule', '').strip()
 	is_active = request.POST.get('is_active', '').strip()
@@ -83,7 +81,7 @@ def api_notification_update(request):
 		is_active = False
 
 	try:
-		user = User.objects.get(username=phone_number)
+		user = User.objects.get(username=username)
 	except User.DoesNotExist:
 		errors.update({'message': _('User does not exists.')})
 	else:
