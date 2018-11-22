@@ -3,7 +3,6 @@ from __future__ import unicode_literals
 
 from django.conf import settings
 from django.contrib.auth.hashers import make_password
-from django.db.models import Q
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -32,7 +31,7 @@ def api_notification_register(request):
 	username = request.POST.get('username', '').strip()
 	password = request.POST.get('password', '')
 	platform = request.POST.get('platform', '').strip()
-	token = request.POST.get('token', '').strip()
+	device_token = request.POST.get('device_token', '').strip()
 	bundle = request.POST.get('bundle', '').strip()
 
 	logger.info(logger_format('Check bundle list', api_notification_register.__name__))
@@ -42,9 +41,9 @@ def api_notification_register(request):
 			message = _('You have successfully registered.')
 			name = platform + '_' + bundle
 			if platform == 'apns':
-				APNSDevice.objects.create(name=name, registration_id=token, user=obj_user)
+				APNSDevice.objects.create(name=name, registration_id=device_token, user=obj_user)
 			elif platform == 'fcm':
-				GCMDevice.objects.create(name=name, registration_id=token, user=obj_user, cloud_message_type='FCM')
+				GCMDevice.objects.create(name=name, registration_id=device_token, user=obj_user, cloud_message_type='FCM')
 
 		logger.info(logger_format('<-------  END  ------->', api_notification_register.__name__))
 		return Response({
