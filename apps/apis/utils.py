@@ -15,28 +15,21 @@ import logging
 logger = logging.getLogger('')
 
 
-def push_notification(platform, bundle, token, message):
-	name = platform + '_' + bundle
-	# noinspection PyBroadException
-	try:
-		if platform == 'apns':
-			user_apps, created = APNSDevice.objects.get_or_create(name=name, registration_id=token)
-			# user_apps.send_message(message=message, sound='default', content_available=1)
-		elif platform == 'fcm':
-			user_apps, created = GCMDevice.objects.get_or_create(name=name, registration_id=token)
-			# user_apps.send_message(None, extra=message, use_fcm_notifications=False)
-		return True
-	except Exception:
-		pass
-	return False
+def update_or_create_device(device, name, token, user, android=False):
+	obj_device = device.objects.get_or_create(name=name, user=user)
+	if android:
+		obj_device.cloud_message_type = 'FCM'
+	obj_device.registration_id = token
+	obj_device.save()
+	return True
 
 
-def message_format(title='', body='', url='', inbox_id='', time='', serial=''):
+def message_format(title='', body='', url='', acm_id='', time='', serial=''):
 	return {
 		'title': title,
 		'body': body,
 		'url': url,
-		'inbox_id': inbox_id,
+		'acm_id': acm_id,
 		'time': time,
 		'camera_serial': serial
 	}

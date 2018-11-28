@@ -7,6 +7,7 @@ from django.conf.urls.static import static
 urlpatterns = [
 	path('', admin.site.urls),
 	path('api/v2/', include('apps.apis.urls')),
+	path('', include('django_prometheus.urls')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 admin.site.site_header = 'Notifications - System Administration'

@@ -12,7 +12,7 @@ from django.contrib.auth.models import User
 from ..schedule.models import Schedule
 from push_notifications.models import GCMDevice, APNSDevice
 
-from ..apis.utils import APIAccessPermission
+from ..apis.utils import APIAccessPermission, update_or_create_device
 from ..commons.utils import logger_format
 
 from functools import partial
@@ -27,8 +27,8 @@ logger = logging.getLogger('')
 def api_notification_register(request):
 	logger.info(logger_format('<-------  START  ------->', api_notification_register.__name__))
 	errors = {}
-	message = ''
 	username = request.POST.get('username', '').strip()
+	new_username = request.POST.get('new_username', '').strip()
 	password = request.POST.get('password', '')
 	platform = request.POST.get('platform', '').strip()
 	device_token = request.POST.get('device_token', '').strip()
@@ -36,20 +36,25 @@ def api_notification_register(request):
 
 	logger.info(logger_format('Check bundle list', api_notification_register.__name__))
 	if platform.lower() in settings.BUNDLE_LIST.keys() and bundle in settings.BUNDLE_LIST[platform]:
-		obj_user, user_created = User.objects.update_or_create(username=username, defaults={'password': make_password(password)})
-		if user_created:
-			message = _('You have successfully registered.')
+		obj_user, user_created = User.objects.get_or_create(username=username)
+		if new_username:
+			obj_user.username = new_username
+		obj_user.password = make_password(password)
+		obj_user.save()
+		if obj_user:
 			name = platform + '_' + bundle
 			if platform == 'apns':
-				APNSDevice.objects.create(name=name, registration_id=device_token, user=obj_user)
+				# APNSDevice.objects.create(name=name, registration_id=device_token, user=obj_user)
+				update_or_create_device(APNSDevice, name, device_token, obj_user, False)
 			elif platform == 'fcm':
-				GCMDevice.objects.create(name=name, registration_id=device_token, user=obj_user, cloud_message_type='FCM')
+				# GCMDevice.objects.create(name=name, registration_id=device_token, user=obj_user, cloud_message_type='FCM')
+				update_or_create_device(GCMDevice, name, device_token, obj_user, True)
 
 		logger.info(logger_format('<-------  END  ------->', api_notification_register.__name__))
 		return Response({
 			'status': status.HTTP_200_OK,
 			'result': True,
-			'message': _('You have successfully updated your password.') if not message else message
+			'message': _('You have successfully registered.')
 		}, status=status.HTTP_200_OK)
 	else:
 		errors.update({'message': _('Check out your mobile platform')})
