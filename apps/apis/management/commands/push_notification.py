@@ -44,7 +44,7 @@ class Command(BaseCommand):
 		data = json.loads(message.payload)
 		name = message.topic.split('/')[1]
 		if data['status'] == 'online':
-			message = message_format(title='Testing', body='Testing', url='www.alert.iotc.vn', acm_id=uuid.uuid1(), time=time.time(), serial=name)
+			message = message_format(title='Testing', body='Testing', url='www.alert.iotc.vn', acm_id=uuid.uuid1().hex, time=time.time(), serial=name)
 			test = json.dumps({
 				'aps': {
 					'alert': message,
@@ -53,6 +53,7 @@ class Command(BaseCommand):
 				}
 			})
 			client.publish('user/84971667819/data/announce', test)
+			client.publish('customer/inbox/data/announce', test)
 			self.stdout.write('Publish completed.')
 		else:
 			message = message_format(title='Testing', body='Testing', url='www.alert.iotc.vn', acm_id=uuid.uuid1(), time=time.time(), serial=name)
@@ -69,4 +70,5 @@ class Command(BaseCommand):
 				elif gcm_list.exists():
 					for obj_gcm in gcm_list:
 						obj_gcm.send_message(None, extra=message, use_fcm_notifications=False)
+			client.publish('customer/inbox/data/announce', message)
 			self.stdout.write('Publish completed.')

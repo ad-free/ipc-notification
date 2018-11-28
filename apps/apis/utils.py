@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+from django.contrib.auth.models import User
+from django.contrib.auth.hashers import make_password
 from django.utils.dateformat import format
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import permissions
 
 from .models import Registration
-from push_notifications.models import GCMDevice, APNSDevice
+from push_notifications.models import CLOUD_MESSAGE_TYPES
 
 from datetime import datetime, timedelta
 
@@ -15,13 +17,27 @@ import logging
 logger = logging.getLogger('')
 
 
-def update_or_create_device(device, name, token, user, android=False):
-	obj_device = device.objects.get_or_create(name=name, user=user)
-	if android:
-		obj_device.cloud_message_type = 'FCM'
-	obj_device.registration_id = token
-	obj_device.save()
-	return True
+def update_or_create_device(device, name, token, username, new_username, android=False):
+	obj_user, user_created = User.objects.get_or_create(username=username)
+	if obj_user:
+		if new_username:
+			obj_user.username = new_username
+			obj_user.password = make_password(new_username)
+		else:
+			obj_user.password = make_password(username)
+		# noinspection PyBroadException
+		try:
+			obj_user.save()
+		except Exception:
+			pass
+		else:
+			obj_device, device_created = device.objects.get_or_create(name=name, user=obj_user)
+			if android:
+				obj_device.cloud_message_type = CLOUD_MESSAGE_TYPES[0][1]
+			obj_device.registration_id = token
+			obj_device.save()
+			return True
+	return False
 
 
 def message_format(title='', body='', url='', acm_id='', time='', serial=''):
