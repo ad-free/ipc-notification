@@ -40,6 +40,7 @@ INSTALLED_APPS = [
 	'push_notifications',
 	'apps.apis',
 	'apps.schedule',
+	'apps.users',
 ]
 
 MIDDLEWARE = [

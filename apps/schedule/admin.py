@@ -8,8 +8,9 @@ from .models import Schedule
 
 @admin.register(Schedule)
 class ScheduleAdmin(admin.ModelAdmin):
-	fields = ('user', 'serial', 'schedule', 'is_active')
-	list_display = ('user', 'serial', 'is_active')
-	search_fields = ('user', 'serial')
+	fields = ('serial', 'user', 'schedule', 'is_active')
+	list_display = ('serial', 'is_active')
+	filter_horizontal = ('user',)
+	search_fields = ('serial',)
 	list_filter = ('is_active',)
-	ordering = ['user', 'serial']
+	ordering = ['serial']

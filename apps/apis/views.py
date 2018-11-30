@@ -7,7 +7,7 @@ from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 
-from django.contrib.auth.models import User
+from apps.users.models import Customer
 from ..schedule.models import Schedule
 from push_notifications.models import GCMDevice, APNSDevice
 
@@ -79,17 +79,18 @@ def api_notification_update(request):
 		is_active = False
 
 	try:
-		user = User.objects.get(username=username)
-	except User.DoesNotExist:
+		user = Customer.objects.get(username=username)
+	except Customer.DoesNotExist:
 		errors.update({'message': _('User does not exists.')})
 	else:
 		obj_schedule, schedule_created = Schedule.objects.update_or_create(
-				user=user.username,
 				serial=serial,
 				defaults={'schedule': schedule, 'is_active': is_active}
 		)
 		logger.info(logger_format('Check schedule', api_notification_update.__name__))
 		if obj_schedule:
+			obj_schedule.user.add(user)
+			obj_schedule.save()
 			logger.info(logger_format('<-------  END  ------->', api_notification_update.__name__))
 			return Response({
 				'status': status.HTTP_200_OK,
@@ -116,10 +117,10 @@ def api_notification_push(request):
 
 	try:
 		obj_schedule = Schedule.objects.get(serial=serial)
-		obj_user = User.objects.get(username=obj_schedule.user)
+		obj_user = Customer.objects.get(username=obj_schedule.user)
 	except Schedule.DoesNotExist:
 		errors.update({'message': _('Schedule does not exists.')})
-	except User.DoesNotExist:
+	except Customer.DoesNotExist:
 		errors.update({'message': _('User does not exists.')})
 	else:
 		APNSDevice.objects.filter(user=obj_user)

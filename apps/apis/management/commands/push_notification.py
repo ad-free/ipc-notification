@@ -17,7 +17,6 @@ from ast import literal_eval
 import paho.mqtt.client as mqtt
 import uuid
 import json
-import time
 
 
 class Command(BaseCommand):
@@ -27,7 +26,7 @@ class Command(BaseCommand):
 		parser.add_argument('--serial', action='store', type=str, default=None, help=_('Camera serial'))
 
 	def handle(self, *args, **options):
-		client = mqtt.Client('iot-{}'.format(uuid.uuid4()))
+		client = mqtt.Client('iot-{}'.format(uuid.uuid1()))
 		client.on_connect = self.on_connect
 		client.on_message = self.on_message
 		client.connect(host=settings.API_QUEUE_HOST, port=settings.API_QUEUE_PORT)
