@@ -2,11 +2,11 @@ from __future__ import absolute_import
 
 from django.conf import settings
 from django.db.models import Q
-from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand, CommandError
 from django.utils.translation import ugettext_lazy as _
 
 from apps.schedule.models import Schedule
+from apps.users.models import Customer
 from push_notifications.models import GCMDevice, APNSDevice
 
 from apps.apis.utils import message_format
@@ -17,6 +17,7 @@ from ast import literal_eval
 import paho.mqtt.client as mqtt
 import uuid
 import json
+import time
 
 
 class Command(BaseCommand):
@@ -45,63 +46,59 @@ class Command(BaseCommand):
 		data = json.loads(message.payload)
 		serial = message.topic.split('/')[1]
 		push_notification = False
-		try:
-			obj_schedule = Schedule.objects.get(serial=serial)
-		except Schedule.DoesNotExist:
-			pass
+
+		if message.topic.startswith('user'):
+			try:
+				obj_user = Customer.objects.get(username=serial)
+			except Customer.DoesNotExist:
+				pass
+			else:
+				if 'status' in data:
+					if data['status'] == 'online':
+						obj_user.is_online = True
+					else:
+						obj_user.is_online = False
+					obj_user.save()
 		else:
-			for schedule in literal_eval(obj_schedule.schedule):
-				begin_at = schedule['begin_at'].split(':')
-				end_at = schedule['end_at'].split(':')
-				if schedule['repeat_status'] == 1:
-					if datetime.now().weekday() in schedule['repeat_at']['days']:
-						now = timedelta(hours=datetime.now().hour, minutes=datetime.now().minute)
-						if (timedelta(hours=int(begin_at[0]), minutes=int(begin_at[1])) < now) and (now < timedelta(hours=int(end_at[0]), minutes=int(end_at[1]))):
+			try:
+				obj_schedule = Schedule.objects.get(serial=serial)
+			except Schedule.DoesNotExist:
+				pass
+			else:
+				for schedule in literal_eval(obj_schedule.schedule):
+					begin_at = schedule['begin_at'].split(':')
+					end_at = schedule['end_at'].split(':')
+					if schedule['repeat_status'] == 1:
+						if datetime.now().weekday() in schedule['repeat_at']['days']:
+							now = timedelta(hours=datetime.now().hour, minutes=datetime.now().minute)
+							if (timedelta(hours=int(begin_at[0]), minutes=int(begin_at[1])) < now) and (now < timedelta(hours=int(end_at[0]), minutes=int(end_at[1]))):
+								push_notification = True
+								break
+					elif schedule['repeat_status'] == 0:
+						start_time = datetime.strptime('{date} {hour}:{minutes}'.format(date=schedule['repeat_at']['days'], hour=int(begin_at[0]), minutes=int(begin_at[1])), settings.DATE_TIME_FORMAT)
+						end_time = datetime.strptime('{date} {hour}:{minutes}'.format(date=schedule['repeat_at']['days'], hour=int(end_at[0]), minutes=int(end_at[1])), settings.DATE_TIME_FORMAT)
+						if (start_time < datetime.now()) and (datetime.now() < end_time):
 							push_notification = True
 							break
-				elif schedule['repeat_status'] == 0:
-					start_time = datetime.strptime('{date} {hour}:{minutes}'.format(date=schedule['repeat_at']['days'], hour=int(begin_at[0]), minutes=int(begin_at[1])), settings.DATE_TIME_FORMAT)
-					end_time = datetime.strptime('{date} {hour}:{minutes}'.format(date=schedule['repeat_at']['days'], hour=int(end_at[0]), minutes=int(end_at[1])), settings.DATE_TIME_FORMAT)
-					if (start_time < datetime.now()) and (datetime.now() < end_time):
-						push_notification = True
-						break
 
-			if push_notification:
-				apns_list = APNSDevice.objects.filter(name=obj_schedule.user)
-				gcm_list = GCMDevice.objects.filter(name=obj_schedule.user)
-				if apns_list.exists():
-					for obj_apns in apns_list:
-						obj_apns.send_message(message=message, sound='default', content_available=1)
-				elif gcm_list.exists():
-					for obj_gcm in gcm_list:
-						obj_gcm.send_message(None, extra=message, use_fcm_notifications=False)
-
-		# if data['status'] == 'online':
-		# 	message = message_format(title='Testing', body='Testing', url='www.alert.iotc.vn', acm_id=uuid.uuid1().hex, time=time.time(), serial=serial)
-		# 	test = json.dumps({
-		# 		'aps': {
-		# 			'alert': message,
-		# 			'sound': 'default',
-		# 			'content-available': 1
-		# 		}
-		# 	})
-		# 	client.publish('user/84971667819/data/announce', test)
-		# 	client.publish('customer/inbox/data/announce', test)
-		# 	self.stdout.write('Publish completed.')
-		# else:
-		# 	message = message_format(title='Testing', body='Testing', url='www.alert.iotc.vn', acm_id=uuid.uuid1(), time=time.time(), serial=serial)
-		# 	try:
-		# 		obj_schedule = Schedule.objects.get(serial=serial)
-		# 	except Schedule.DoesNotExist:
-		# 		pass
-		# 	else:
-		# 		apns_list = APNSDevice.objects.filter(name=obj_schedule.user)
-		# 		gcm_list = GCMDevice.objects.filter(name=obj_schedule.user)
-		# 		if apns_list.exists():
-		# 			for obj_apns in apns_list:
-		# 				obj_apns.send_message(message=message, sound='default', content_available=1)
-		# 		elif gcm_list.exists():
-		# 			for obj_gcm in gcm_list:
-		# 				obj_gcm.send_message(None, extra=message, use_fcm_notifications=False)
-		# 	client.publish('customer/inbox/data/announce', message)
-		# 	self.stdout.write('Publish completed.')
+				if push_notification:
+					for user in obj_schedule.user.all():
+						if user.is_online:
+							test = json.dumps({
+								'aps': {
+									'alert': message,
+									'sound': 'default',
+									'content-available': 1
+								}
+							})
+							client.pushlish(settings.USER_TOPIC_ANNOUNCE.format(name=user.username), test)
+						else:
+							message = message_format(title='Testing', body='Testing', url='www.alert.iotc.vn', acm_id=uuid.uuid1().hex, time=time.time(), serial=serial)
+							apns_list = APNSDevice.objects.filter(user=user)
+							gcm_list = GCMDevice.objects.filter(user=user)
+							if apns_list.exists():
+								for obj_apns in apns_list:
+									obj_apns.send_message(message=message, sound='default', content_available=1)
+							elif gcm_list.exists():
+								for obj_gcm in gcm_list:
+									obj_gcm.send_message(None, extra=message, use_fcm_notifications=False)
