@@ -13,6 +13,7 @@ from apps.apis.utils import message_format
 from pytz import unicode
 from datetime import datetime, timedelta
 from ast import literal_eval
+from threading import Thread
 
 import paho.mqtt.client as mqtt
 import uuid
@@ -60,45 +61,49 @@ class Command(BaseCommand):
 						obj_user.is_online = False
 					obj_user.save()
 		else:
-			try:
-				obj_schedule = Schedule.objects.get(serial=serial)
-			except Schedule.DoesNotExist:
-				pass
-			else:
-				for schedule in literal_eval(obj_schedule.schedule):
-					begin_at = schedule['begin_at'].split(':')
-					end_at = schedule['end_at'].split(':')
-					if schedule['repeat_status'] == 1:
-						if datetime.now().weekday() in schedule['repeat_at']['days']:
+			obj_schedule = Schedule.objects.filter(serial=serial)
+			if obj_schedule.exists():
+				for schedule in obj_schedule:
+					begin_at = schedule.start_time.split(':')
+					end_at = schedule.end_time.split(':')
+					if schedule.repeat_status:
+						if datetime.now().weekday() in schedule.repeat_at.split(','):
 							now = timedelta(hours=datetime.now().hour, minutes=datetime.now().minute)
 							if (timedelta(hours=int(begin_at[0]), minutes=int(begin_at[1])) < now) and (now < timedelta(hours=int(end_at[0]), minutes=int(end_at[1]))):
-								push_notification = True
+								for user in schedule.user.all():
+									t = Thread(target=self.push_notification, args=(client, user, serial))
+									t.setDaemon(True)
+									t.start()
 								break
-					elif schedule['repeat_status'] == 0:
-						start_time = datetime.strptime('{date} {hour}:{minutes}'.format(date=schedule['repeat_at']['days'], hour=int(begin_at[0]), minutes=int(begin_at[1])), settings.DATE_TIME_FORMAT)
-						end_time = datetime.strptime('{date} {hour}:{minutes}'.format(date=schedule['repeat_at']['days'], hour=int(end_at[0]), minutes=int(end_at[1])), settings.DATE_TIME_FORMAT)
+					else:
+						start_time = datetime.strptime('{date} {hour}:{minutes}'.format(date=schedule.repeat_at, hour=int(begin_at[0]), minutes=int(begin_at[1])), settings.DATE_TIME_FORMAT)
+						end_time = datetime.strptime('{date} {hour}:{minutes}'.format(date=schedule.repeat_at, hour=int(end_at[0]), minutes=int(end_at[1])), settings.DATE_TIME_FORMAT)
 						if (start_time < datetime.now()) and (datetime.now() < end_time):
-							push_notification = True
+							for user in schedule.user.all():
+								t = Thread(target=self.push_notification, args=(client, user, serial))
+								t.setDaemon(True)
+								t.start()
 							break
 
-				if push_notification:
-					for user in obj_schedule.user.all():
-						if user.is_online:
-							test = json.dumps({
-								'aps': {
-									'alert': message,
-									'sound': 'default',
-									'content-available': 1
-								}
-							})
-							client.pushlish(settings.USER_TOPIC_ANNOUNCE.format(name=user.username), test)
-						else:
-							message = message_format(title='Testing', body='Testing', url='www.alert.iotc.vn', acm_id=uuid.uuid1().hex, time=time.time(), serial=serial)
-							apns_list = APNS.objects.filter(user=user)
-							gcm_list = GCM.objects.filter(user=user)
-							if apns_list.exists():
-								for obj_apns in apns_list:
-									obj_apns.send_message(message=message, sound='default', content_available=1)
-							elif gcm_list.exists():
-								for obj_gcm in gcm_list:
-									obj_gcm.send_message(None, extra=message, use_fcm_notifications=False)
+	def push_notification(self, client, user, serial):
+		message = message_format(title='Testing', body='Testing', url='www.alert.iotc.vn', acm_id=uuid.uuid1().hex, time=time.time(), serial=serial)
+		if user.is_online:
+			test = json.dumps({
+				'aps': {
+					'alert': message,
+					'sound': 'default',
+					'content-available': 1
+				}
+			})
+			client.pushlish(settings.USER_TOPIC_ANNOUNCE.format(name=user.username), test)
+			self.stdout.write('Publish message completed.')
+		else:
+			apns_list = APNS.objects.distinct().filter(user=user)
+			gcm_list = GCM.objects.distinct().filter(user=user)
+			if apns_list.exists():
+				for obj_apns in apns_list:
+					obj_apns.send_message(message=message, sound='default', content_available=1)
+			elif gcm_list.exists():
+				for obj_gcm in gcm_list:
+					obj_gcm.send_message(None, extra=message, use_fcm_notifications=False)
+			self.stdout.write('Sent a notification to user.')

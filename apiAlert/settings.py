@@ -140,6 +140,6 @@ CONFIG_URL = '/config/'
 ADMIN_MEDIA_PREFIX = '/static/admin/'
 
 try:
-	from apiAlert.local_settings import *
+	from .local_settings import *
 except ImportError:
 	pass
