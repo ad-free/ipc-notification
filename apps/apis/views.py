@@ -98,7 +98,7 @@ def api_notification_update(request):
 				data_default.update({'date': date, 'repeat_at': None})
 			else:
 				data_default.update({'date': None, 'repeat_at': date})
-			obj_schedule, schedule_created = Schedule.objects.update_or_create(serial=serial, schedule_uuid=schedule_id, defaults=data_default)
+			obj_schedule, schedule_created = Schedule.objects.update_or_create(serial=serial, schedule_id=schedule_id, defaults=data_default)
 			if int(is_active) == 1:
 				obj_schedule.user.add(user)
 			else:
@@ -146,12 +146,12 @@ def api_notification_active(request):
 		else:
 			if int(is_active) == 1:
 				for schedule in json.loads(schedule_id):
-					obj_schedule = Schedule.objects.get(serial=serial, schedule_uuid=schedule)
+					obj_schedule = Schedule.objects.get(serial=serial, schedule_id=schedule)
 					obj_schedule.user.add(user)
 				message = _('Activate notification successful.')
 			else:
 				for schedule in json.loads(schedule_id):
-					obj_schedule = Schedule.objects.get(serial=serial, schedule_uuid=schedule)
+					obj_schedule = Schedule.objects.get(serial=serial, schedule_id=schedule)
 					obj_schedule.user.remove(user)
 				message = _('In-activate notification successful.')
 
@@ -188,7 +188,7 @@ def api_notification_delete(request):
 			Schedule.objects.filter(serial=serial).delete()
 		else:
 			try:
-				obj_schedule = Schedule.objects.get(serial=serial, schedule_uuid=schedule_id)
+				obj_schedule = Schedule.objects.get(serial=serial, schedule_id=schedule_id)
 				obj_schedule.delete()
 			except Schedule.DoesNotExist:
 				logger.error(logger_format('Schedule does not exists.', api_notification_delete.__name__))
