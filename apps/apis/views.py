@@ -149,7 +149,7 @@ def api_notification_active(request):
 						obj_schedule = Schedule.objects.get(serial=serial, schedule_id=schedule)
 						obj_schedule.user.add(user)
 					except Schedule.DoesNotExist:
-						logger.error(logger_format('Schedule does not exists.', api_notification_active.__name__))
+						logger.warning(logger_format('Schedule does not exists.', api_notification_active.__name__))
 				message = _('Activate notification successful.')
 			else:
 				for schedule in json.loads(schedule_id):
@@ -157,7 +157,7 @@ def api_notification_active(request):
 						obj_schedule = Schedule.objects.get(serial=serial, schedule_id=schedule)
 						obj_schedule.user.remove(user)
 					except Schedule.DoesNotExist:
-						logger.error(logger_format('Schedule does not exists.', api_notification_active.__name__))
+						logger.warning(logger_format('Schedule does not exists.', api_notification_active.__name__))
 				message = _('In-activate notification successful.')
 
 			logger.info(logger_format('<-------  END  ------->', api_notification_active.__name__))
