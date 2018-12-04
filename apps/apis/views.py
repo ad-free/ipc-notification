@@ -123,7 +123,6 @@ def api_notification_update(request):
 def api_notification_active(request):
 	logger.info(logger_format('<-------  START  ------->', api_notification_active.__name__))
 	errors = {}
-	message = ''
 	username = request.POST.get('username', '').strip()
 	serial = request.POST.get('serial', '').strip()
 	schedule_id = request.POST.get('schedule_id', '').strip()
@@ -146,21 +145,27 @@ def api_notification_active(request):
 		else:
 			if int(is_active) == 1:
 				for schedule in json.loads(schedule_id):
-					obj_schedule = Schedule.objects.get(serial=serial, schedule_id=schedule)
-					obj_schedule.user.add(user)
+					try:
+						obj_schedule = Schedule.objects.get(serial=serial, schedule_id=schedule)
+						obj_schedule.user.add(user)
+					except Schedule.DoesNotExist:
+						logger.error(logger_format('Schedule does not exists.', api_notification_active.__name__))
 				message = _('Activate notification successful.')
 			else:
 				for schedule in json.loads(schedule_id):
-					obj_schedule = Schedule.objects.get(serial=serial, schedule_id=schedule)
-					obj_schedule.user.remove(user)
+					try:
+						obj_schedule = Schedule.objects.get(serial=serial, schedule_id=schedule)
+						obj_schedule.user.remove(user)
+					except Schedule.DoesNotExist:
+						logger.error(logger_format('Schedule does not exists.', api_notification_active.__name__))
 				message = _('In-activate notification successful.')
 
-		logger.info(logger_format('<-------  END  ------->', api_notification_active.__name__))
-		return Response({
-			'status': status.HTTP_200_OK,
-			'result': True,
-			'message': message
-		}, status=status.HTTP_200_OK)
+			logger.info(logger_format('<-------  END  ------->', api_notification_active.__name__))
+			return Response({
+				'status': status.HTTP_200_OK,
+				'result': True,
+				'message': message
+			}, status=status.HTTP_200_OK)
 
 	logger.info(logger_format('<-------  END  ------->', api_notification_active.__name__))
 	return Response({
