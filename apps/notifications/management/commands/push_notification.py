@@ -64,7 +64,7 @@ class Command(BaseCommand):
 			if obj_schedule.exists():
 				for schedule in obj_schedule:
 					if schedule.repeat_status:
-						if datetime.now().weekday() in schedule.repeat_at.split(','):
+						if datetime.now().weekday() in json.loads(schedule.repeat_at):
 							now = timedelta(hours=datetime.now().hour, minutes=datetime.now().minute)
 							if (timedelta(hours=schedule.start_time.hour, minutes=schedule.start_time.minute) < now) and (now < timedelta(hours=schedule.end_time.hour, minutes=schedule.end_time.minute)):
 								for user in schedule.user.all():
