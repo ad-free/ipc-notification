@@ -46,7 +46,6 @@ class Command(BaseCommand):
 	def on_message(self, client, userdata, message):
 		data = json.loads(message.payload)
 		serial = message.topic.split('/')[1]
-		push_notification = False
 
 		if message.topic.startswith('user'):
 			try:
@@ -64,20 +63,18 @@ class Command(BaseCommand):
 			obj_schedule = Schedule.objects.filter(serial=serial)
 			if obj_schedule.exists():
 				for schedule in obj_schedule:
-					begin_at = schedule.start_time.split(':')
-					end_at = schedule.end_time.split(':')
 					if schedule.repeat_status:
 						if datetime.now().weekday() in schedule.repeat_at.split(','):
 							now = timedelta(hours=datetime.now().hour, minutes=datetime.now().minute)
-							if (timedelta(hours=int(begin_at[0]), minutes=int(begin_at[1])) < now) and (now < timedelta(hours=int(end_at[0]), minutes=int(end_at[1]))):
+							if (timedelta(hours=schedule.start_time.hour, minutes=schedule.start_time.minute) < now) and (now < timedelta(hours=schedule.end_time.hour, minutes=schedule.end_time.minute)):
 								for user in schedule.user.all():
 									t = Thread(target=self.push_notification, args=(client, user, serial))
 									t.setDaemon(True)
 									t.start()
 								break
 					else:
-						start_time = datetime.strptime('{date} {hour}:{minutes}'.format(date=schedule.repeat_at, hour=int(begin_at[0]), minutes=int(begin_at[1])), settings.DATE_TIME_FORMAT)
-						end_time = datetime.strptime('{date} {hour}:{minutes}'.format(date=schedule.repeat_at, hour=int(end_at[0]), minutes=int(end_at[1])), settings.DATE_TIME_FORMAT)
+						start_time = datetime.strptime('{date} {hour}:{minutes}'.format(date=schedule.date, hour=schedule.start_time.hour, minutes=schedule.start_time.minute), settings.DATE_TIME_FORMAT)
+						end_time = datetime.strptime('{date} {hour}:{minutes}'.format(date=schedule.date, hour=schedule.end_time.hour, minutes=schedule.end_time.minute), settings.DATE_TIME_FORMAT)
 						if (start_time < datetime.now()) and (datetime.now() < end_time):
 							for user in schedule.user.all():
 								t = Thread(target=self.push_notification, args=(client, user, serial))
@@ -95,7 +92,7 @@ class Command(BaseCommand):
 					'content-available': 1
 				}
 			})
-			client.pushlish(settings.USER_TOPIC_ANNOUNCE.format(name=user.username), test)
+			client.publish(settings.USER_TOPIC_ANNOUNCE.format(name=user.username), test)
 			self.stdout.write('Publish message completed.')
 		else:
 			apns_list = APNS.objects.distinct().filter(user=user)

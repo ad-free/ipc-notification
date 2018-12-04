@@ -13,7 +13,7 @@ import uuid
 class Schedule(models.Model):
 	id = models.UUIDField(primary_key=True, default=uuid.uuid1, editable=False)
 	user = models.ManyToManyField(Customer, blank=True, related_name='schedule_customer')
-	schedule_uuid = models.UUIDField(editable=False)
+	schedule_id = models.UUIDField(editable=False)
 	serial = models.CharField(max_length=100)
 	start_time = models.TimeField(default=now, blank=True, null=True)
 	end_time = models.TimeField(default=now, blank=True, null=True)
@@ -28,8 +28,8 @@ class Schedule(models.Model):
 		verbose_name_plural = _('Schedules')
 
 	def save(self, *args, **kwargs):
-		if not self.schedule_uuid:
-			self.schedule_uuid = uuid.uuid1().hex
+		if not self.schedule_id:
+			self.schedule_id = uuid.uuid1().hex
 		return super(Schedule, self).save(*args, **kwargs)
 
 	def __str__(self):
