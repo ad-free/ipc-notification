@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-from django.contrib.auth.models import User
 from django.contrib.auth.hashers import make_password
 from django.utils.dateformat import format
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import permissions
 
 from .models import Registration
+from ..users.models import Customer
 from push_notifications.models import CLOUD_MESSAGE_TYPES
 
 from datetime import datetime, timedelta
@@ -18,7 +18,7 @@ logger = logging.getLogger('')
 
 
 def update_or_create_device(device, name, token, username, new_username, password, android=False):
-	obj_user, user_created = User.objects.get_or_create(username=username)
+	obj_user, user_created = Customer.objects.get_or_create(username=username)
 	if obj_user:
 		if new_username:
 			obj_user.username = new_username
