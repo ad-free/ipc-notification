@@ -70,7 +70,7 @@ def api_notification_update(request):
 	username = request.POST.get('username', '').strip()
 	serial = request.POST.get('serial', '').strip()
 	schedule_list = request.POST.get('schedule', '').strip()
-	is_unshared = request.POST.get('is_unshared', '0').strip()
+	is_unshared = request.POST.get('is_unshared', '').strip()
 
 	try:
 		user = Customer.objects.get(username=username)
@@ -78,7 +78,7 @@ def api_notification_update(request):
 		logger.error(logger_format('User does not exists.', api_notification_update.__name__))
 		errors.update({'message': _('User does not exists.')})
 	else:
-		if int(is_unshared) == 1:
+		if is_unshared == '1':
 			obj_schedule = Schedule.objects.filter(serial=serial)
 			if obj_schedule.exists():
 				for schedule in obj_schedule:
