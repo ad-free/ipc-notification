@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-from django.conf import settings
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -15,6 +14,7 @@ from ..apis.utils import APIAccessPermission, update_or_create_device
 from ..commons.utils import logger_format
 
 from functools import partial
+from ast import literal_eval
 
 import logging
 
@@ -67,43 +67,46 @@ def api_notification_update(request):
 	errors = {}
 	username = request.POST.get('username', '').strip()
 	serial = request.POST.get('serial', '').strip()
-	schedule_uuid = request.POST.get('schedule_uuid', '').strip()
-	start_time = request.POST.get('start_time', '').strip()
-	end_time = request.POST.get('end_time', '').strip()
-	date = request.POST.get('date', '').strip()
-	repeat_status = request.POST.get('repeat_status', '').strip()
-	is_active = request.POST.get('is_active', 0)
-	is_delete = request.POST.get('is_delete', 0)
+	schedule_list = request.POST.get('schedule', '').strip()
+	is_unshared = request.POST.get('is_unshared', '').strip()
 
 	try:
 		user = Customer.objects.get(username=username)
 	except Customer.DoesNotExist:
+		logger.error(logger_format('User does not exists.', api_notification_update.__name__))
 		errors.update({'message': _('User does not exists.')})
 	else:
-		if int(is_delete) == 0:
-			data_default = {
-				'start_time': start_time,
-				'end_time': end_time,
-				'repeat_status': repeat_status,
-				'is_active': True if int(is_active) == 1 else False
-			}
-			if int(repeat_status) == 0:
-				data_default.update({'date': date, 'repeat_at': None})
-			else:
-				data_default.update({'date': None, 'repeat_at': date})
-			obj_schedule, schedule_created = Schedule.objects.update_or_create(serial=serial, schedule_uuid=schedule_uuid, defaults=data_default)
-			obj_schedule.user.add(user)
-			message = _('Update your schedule successfully.')
+		if is_unshared == '1':
+			obj_schedule = Schedule.objects.filter(serial=serial)
+			if obj_schedule.exists():
+				for schedule in obj_schedule:
+					schedule.user.remove(user)
 		else:
-			obj_schedule = Schedule.objects.get(serial=serial, schedule_uuid=schedule_uuid)
-			obj_schedule.user.remove(user)
-			message = _('You have successfully deleted the notification.')
-
+			for schedule in literal_eval(schedule_list):
+				data_default = {
+					'start_time': schedule['begin_at'],
+					'end_time': schedule['end_at'],
+					'repeat_status': int(schedule['repeat_status']),
+					'is_active': True if int(schedule['is_active']) == 1 else False
+				}
+				if int(schedule['repeat_status']) == 0:
+					data_default.update({'date': schedule['repeat_at'], 'repeat_at': None})
+				else:
+					data_default.update({'date': None, 'repeat_at': schedule['repeat_at']})
+				obj_schedule, schedule_created = Schedule.objects.update_or_create(
+						serial=serial,
+						schedule_id=schedule['schedule_id'],
+						defaults=data_default
+				)
+				if int(schedule['is_active']) == 1:
+					obj_schedule.user.add(user)
+				else:
+					obj_schedule.user.remove(user)
 		logger.info(logger_format('<-------  END  ------->', api_notification_update.__name__))
 		return Response({
 			'status': status.HTTP_200_OK,
 			'result': True,
-			'message': message
+			'message': _('Update your schedule successfully.')
 		}, status=status.HTTP_200_OK)
 
 	logger.info(logger_format('<-------  END  ------->', api_notification_update.__name__))
@@ -115,23 +118,95 @@ def api_notification_update(request):
 
 
 @api_view(['POST'])
+@permission_classes((partial(APIAccessPermission, 'api_notification_active'),))
+def api_notification_active(request):
+	logger.info(logger_format('<-------  START  ------->', api_notification_active.__name__))
+	errors = {}
+	username = request.POST.get('username', '').strip()
+	serial = request.POST.get('serial', '').strip()
+	schedule_id = request.POST.get('schedule_id', '').strip()
+	is_active = request.POST.get('is_active', '0').strip()
+
+	logger.info(logger_format('Check serial', api_notification_active.__name__))
+	if not serial:
+		errors.update({'serial': _('This field is required.')})
+
+	logger.info(logger_format('Check username', api_notification_active.__name__))
+	if not username:
+		errors.update({'username': _('This field is required.')})
+
+	if not errors:
+		try:
+			user = Customer.objects.get(username=username)
+		except Customer.DoesNotExist:
+			logger.error(logger_format('User does not exists.', api_notification_active.__name__))
+			errors.update({'message': _('User does not exists.')})
+		else:
+			if int(is_active) == 1:
+				for schedule in literal_eval(schedule_id):
+					try:
+						obj_schedule = Schedule.objects.get(serial=serial, schedule_id=schedule)
+						obj_schedule.user.add(user)
+					except Schedule.DoesNotExist:
+						logger.warning(logger_format('Schedule does not exists.', api_notification_active.__name__))
+				message = _('Activate notification successful.')
+			else:
+				for schedule in literal_eval(schedule_id):
+					try:
+						obj_schedule = Schedule.objects.get(serial=serial, schedule_id=schedule)
+						obj_schedule.user.remove(user)
+					except Schedule.DoesNotExist:
+						logger.warning(logger_format('Schedule does not exists.', api_notification_active.__name__))
+				message = _('In-activate notification successful.')
+
+			logger.info(logger_format('<-------  END  ------->', api_notification_active.__name__))
+			return Response({
+				'status': status.HTTP_200_OK,
+				'result': True,
+				'message': message
+			}, status=status.HTTP_200_OK)
+
+	logger.info(logger_format('<-------  END  ------->', api_notification_active.__name__))
+	return Response({
+		'status': status.HTTP_400_BAD_REQUEST,
+		'result': False,
+		'errors': errors
+	}, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
 @permission_classes((partial(APIAccessPermission, 'api_notification_delete'),))
 def api_notification_delete(request):
+	logger.info(logger_format('<-------  START  ------->', api_notification_delete.__name__))
 	errors = {}
 	serial = request.POST.get('serial', '').strip()
-	schedule_uuid = request.POST.get('schedule_uuid', '').strip()
+	schedule_list = request.POST.get('schedule_id', '').strip()
+	is_delete = request.POST.get('is_delete', '').strip()
 
-	try:
-		obj_schedule = Schedule.objects.get(serial=serial, schedule_uuid=schedule_uuid)
-		obj_schedule.delete()
+	logger.info(logger_format('Check serial', api_notification_delete.__name__))
+	if not serial:
+		errors.update({'serial': _('This field is required.')})
+
+	if not errors:
+		if is_delete == '1':
+			Schedule.objects.filter(serial=serial).delete()
+		else:
+			for schedule in literal_eval(schedule_list):
+				try:
+					obj_schedule = Schedule.objects.get(serial=serial, schedule_id=schedule)
+					obj_schedule.delete()
+				except Schedule.DoesNotExist:
+					logger.warning(logger_format('Schedule does not exists.', api_notification_delete.__name__))
+					errors.update({'message': _('Schedule does not exists.')})
+
+		logger.info(logger_format('<-------  END  ------->', api_notification_delete.__name__))
 		return Response({
 			'status': status.HTTP_200_OK,
 			'result': True,
 			'message': _('You have successfully deleted the notification.')
 		}, status=status.HTTP_200_OK)
-	except Schedule.DoesNotExist:
-		errors.update({'message': _('Schedule does not exists.')})
 
+	logger.info(logger_format('<-------  END  ------->', api_notification_delete.__name__))
 	return Response({
 		'status': status.HTTP_400_BAD_REQUEST,
 		'result': False,

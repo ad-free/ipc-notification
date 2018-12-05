@@ -11,7 +11,7 @@ from .forms import TimeForm
 class ScheduleAdmin(admin.ModelAdmin):
 	form = TimeForm
 	fields = ('serial', 'date', 'start_time', 'end_time', 'repeat_at', 'user', 'repeat_status', 'is_active')
-	list_display = ('serial', 'schedule_uuid', 'date', 'start_time', 'end_time', 'repeat_status', 'is_active')
+	list_display = ('serial', 'schedule_id', 'date', 'start_time', 'end_time', 'repeat_status', 'is_active')
 	filter_horizontal = ('user',)
 	search_fields = ('serial',)
 	list_filter = ('repeat_status', 'is_active',)
