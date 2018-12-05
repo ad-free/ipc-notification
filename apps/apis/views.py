@@ -15,6 +15,7 @@ from ..apis.utils import APIAccessPermission, update_or_create_device
 from ..commons.utils import logger_format
 
 from functools import partial
+from ast import literal_eval
 
 import json
 import logging
@@ -68,12 +69,7 @@ def api_notification_update(request):
 	errors = {}
 	username = request.POST.get('username', '').strip()
 	serial = request.POST.get('serial', '').strip()
-	schedule_id = request.POST.get('schedule_id', '').strip()
-	start_time = request.POST.get('start_time', '').strip()
-	end_time = request.POST.get('end_time', '').strip()
-	date = request.POST.get('date', '').strip()
-	repeat_status = request.POST.get('repeat_status', '').strip()
-	is_active = request.POST.get('is_active', '0').strip()
+	schedule_list = request.POST.get('schedule', '').strip()
 	is_unshared = request.POST.get('is_unshared', '0').strip()
 
 	try:
@@ -88,21 +84,26 @@ def api_notification_update(request):
 				for schedule in obj_schedule:
 					schedule.user.remove(user)
 		else:
-			data_default = {
-				'start_time': start_time,
-				'end_time': end_time,
-				'repeat_status': repeat_status,
-				'is_active': True if int(is_active) == 1 else False
-			}
-			if int(repeat_status) == 0:
-				data_default.update({'date': date, 'repeat_at': None})
-			else:
-				data_default.update({'date': None, 'repeat_at': date})
-			obj_schedule, schedule_created = Schedule.objects.update_or_create(serial=serial, schedule_id=schedule_id, defaults=data_default)
-			if int(is_active) == 1:
-				obj_schedule.user.add(user)
-			else:
-				obj_schedule.user.remove(user)
+			for schedule in literal_eval(schedule_list):
+				data_default = {
+					'start_time': schedule['begin_at'],
+					'end_time': schedule['end_at'],
+					'repeat_status': int(schedule['repeat_status']),
+					'is_active': True if int(schedule['is_active']) == 1 else False
+				}
+				if int(schedule['repeat_status']) == 0:
+					data_default.update({'date': schedule['repeat_at'], 'repeat_at': None})
+				else:
+					data_default.update({'date': None, 'repeat_at': schedule['repeat_at']})
+				obj_schedule, schedule_created = Schedule.objects.update_or_create(
+						serial=serial,
+						schedule_id=schedule['schedule_id'],
+						defaults=data_default
+				)
+				if int(schedule['is_active']) == 1:
+					obj_schedule.user.add(user)
+				else:
+					obj_schedule.user.remove(user)
 		logger.info(logger_format('<-------  END  ------->', api_notification_update.__name__))
 		return Response({
 			'status': status.HTTP_200_OK,
