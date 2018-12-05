@@ -180,23 +180,24 @@ def api_notification_delete(request):
 	logger.info(logger_format('<-------  START  ------->', api_notification_delete.__name__))
 	errors = {}
 	serial = request.POST.get('serial', '').strip()
-	schedule_id = request.POST.get('schedule_id', '').strip()
-	is_delete = request.POST.get('is_delete', '0').strip()
+	schedule_list = request.POST.get('schedule_id', '').strip()
+	is_delete = request.POST.get('is_delete', '').strip()
 
 	logger.info(logger_format('Check serial', api_notification_delete.__name__))
 	if not serial:
 		errors.update({'serial': _('This field is required.')})
 
 	if not errors:
-		if int(is_delete) == 1:
+		if is_delete == '1':
 			Schedule.objects.filter(serial=serial).delete()
 		else:
-			try:
-				obj_schedule = Schedule.objects.get(serial=serial, schedule_id=schedule_id)
-				obj_schedule.delete()
-			except Schedule.DoesNotExist:
-				logger.error(logger_format('Schedule does not exists.', api_notification_delete.__name__))
-				errors.update({'message': _('Schedule does not exists.')})
+			for schedule in literal_eval(schedule_list):
+				try:
+					obj_schedule = Schedule.objects.get(serial=serial, schedule_id=schedule)
+					obj_schedule.delete()
+				except Schedule.DoesNotExist:
+					logger.warning(logger_format('Schedule does not exists.', api_notification_delete.__name__))
+					errors.update({'message': _('Schedule does not exists.')})
 
 		logger.info(logger_format('<-------  END  ------->', api_notification_delete.__name__))
 		return Response({

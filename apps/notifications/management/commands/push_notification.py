@@ -66,7 +66,7 @@ class Command(BaseCommand):
 					if schedule.repeat_status:
 						if datetime.now().weekday() in json.loads(schedule.repeat_at):
 							now = timedelta(hours=datetime.now().hour, minutes=datetime.now().minute)
-							if (timedelta(hours=schedule.start_time.hour, minutes=schedule.start_time.minute) < now) and (now < timedelta(hours=schedule.end_time.hour, minutes=schedule.end_time.minute)):
+							if (timedelta(hours=schedule.start_time.hour, minutes=schedule.start_time.minute) <= now) and (now <= timedelta(hours=schedule.end_time.hour, minutes=schedule.end_time.minute)):
 								for user in schedule.user.all():
 									t = Thread(target=self.push_notification, args=(client, user, serial))
 									t.setDaemon(True)
@@ -75,7 +75,7 @@ class Command(BaseCommand):
 					else:
 						start_time = datetime.strptime('{date} {hour}:{minutes}'.format(date=schedule.date, hour=schedule.start_time.hour, minutes=schedule.start_time.minute), settings.DATE_TIME_FORMAT)
 						end_time = datetime.strptime('{date} {hour}:{minutes}'.format(date=schedule.date, hour=schedule.end_time.hour, minutes=schedule.end_time.minute), settings.DATE_TIME_FORMAT)
-						if (start_time < datetime.now()) and (datetime.now() < end_time):
+						if (start_time <= datetime.now()) and (datetime.now() <= end_time):
 							for user in schedule.user.all():
 								t = Thread(target=self.push_notification, args=(client, user, serial))
 								t.setDaemon(True)
