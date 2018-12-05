@@ -93,6 +93,7 @@ class Command(BaseCommand):
 				}
 			})
 			client.publish(settings.USER_TOPIC_ANNOUNCE.format(name=user.username), test)
+			client.publish(settings.CUSTOMER_TOPIC_ANNOUNCE.format(name=user.username), test)
 			self.stdout.write('Publish message completed.')
 		else:
 			apns_list = APNS.objects.distinct().filter(user=user)
