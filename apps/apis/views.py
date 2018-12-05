@@ -145,7 +145,7 @@ def api_notification_active(request):
 			errors.update({'message': _('User does not exists.')})
 		else:
 			if int(is_active) == 1:
-				for schedule in json.loads(schedule_id):
+				for schedule in literal_eval(schedule_id):
 					try:
 						obj_schedule = Schedule.objects.get(serial=serial, schedule_id=schedule)
 						obj_schedule.user.add(user)
@@ -153,7 +153,7 @@ def api_notification_active(request):
 						logger.warning(logger_format('Schedule does not exists.', api_notification_active.__name__))
 				message = _('Activate notification successful.')
 			else:
-				for schedule in json.loads(schedule_id):
+				for schedule in literal_eval(schedule_id):
 					try:
 						obj_schedule = Schedule.objects.get(serial=serial, schedule_id=schedule)
 						obj_schedule.user.remove(user)
