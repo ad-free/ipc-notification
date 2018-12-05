@@ -20,7 +20,7 @@ logger = logging.getLogger('')
 def update_or_create_device(device, name, token, username, new_username, password, android=False):
 	obj_user, user_created = Customer.objects.get_or_create(username=username)
 	if obj_user:
-		if new_username:
+		if len(new_username) > 0:
 			obj_user.username = new_username
 		obj_user.password = make_password(password)
 		# noinspection PyBroadException
