@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-from django.conf import settings
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -17,7 +16,6 @@ from ..commons.utils import logger_format
 from functools import partial
 from ast import literal_eval
 
-import json
 import logging
 
 logger = logging.getLogger('')
