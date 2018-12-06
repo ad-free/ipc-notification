@@ -24,6 +24,7 @@ class Schedule(models.Model):
 	created_at = models.DateTimeField(auto_now_add=True)
 
 	class Meta:
+		unique_together = (('schedule_id', 'serial'),)
 		verbose_name = _('Schedule')
 		verbose_name_plural = _('Schedules')
 
