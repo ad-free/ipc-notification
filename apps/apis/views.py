@@ -102,6 +102,8 @@ def api_notification_update(request):
 					obj_schedule.user.add(user)
 				else:
 					obj_schedule.user.remove(user)
+					if obj_schedule.user.count() == 0:
+						obj_schedule.delete()
 		logger.info(logger_format('<-------  END  ------->', api_notification_update.__name__))
 		return Response({
 			'status': status.HTTP_200_OK,
