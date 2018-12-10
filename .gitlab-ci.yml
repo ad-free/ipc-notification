@@ -1,0 +1,21 @@
+image: python:latest
+
+services:
+  - mongo:latest
+
+variables:
+  MONGO_DATABASE: ipc_alert
+
+stages:
+  - init
+  - build
+
+init:
+  stage: init
+  script:
+    - pip install -r req.txt
+
+build:
+  stage: build
+  script:
+    - echo 'Hello'
