@@ -9,3 +9,10 @@ from apps.users_auth.models import User
 
 class Customer(User):
 	is_online = models.BooleanField(default=False, verbose_name=_('Online'))
+
+
+class Staff(Customer):
+	class Meta:
+		proxy = True
+		verbose_name = _('Staff account')
+		verbose_name_plural = _('Staff accounts')
