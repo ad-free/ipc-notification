@@ -1,8 +1,7 @@
 from __future__ import absolute_import
 
 from django.conf import settings
-from django.db.models import Q
-from django.core.management.base import BaseCommand, CommandError
+from django.core.management.base import BaseCommand
 from django.utils.translation import ugettext_lazy as _
 
 from apps.schedule.models import Schedule
@@ -12,7 +11,6 @@ from apps.notifications.models import GCM, APNS
 from apps.apis.utils import message_format
 from pytz import unicode
 from datetime import datetime, timedelta
-from ast import literal_eval
 from threading import Thread
 
 import paho.mqtt.client as mqtt
@@ -66,24 +64,49 @@ class Command(BaseCommand):
 					if schedule.repeat_status:
 						if datetime.now().weekday() in json.loads(schedule.repeat_at):
 							now = timedelta(hours=datetime.now().hour, minutes=datetime.now().minute)
-							if (timedelta(hours=schedule.start_time.hour, minutes=schedule.start_time.minute) <= now) and (now <= timedelta(hours=schedule.end_time.hour, minutes=schedule.end_time.minute)):
+							if (timedelta(hours=schedule.start_time.hour, minutes=schedule.start_time.minute) <= now) and (
+									now <= timedelta(hours=schedule.end_time.hour, minutes=schedule.end_time.minute)):
 								for user in schedule.user.all():
-									t = Thread(target=self.push_notification, args=(client, user, serial))
-									t.setDaemon(True)
-									t.start()
+									self.multiple_threading(self.push_notification, self.create_topic, client, user, serial)
 								break
 					else:
-						start_time = datetime.strptime('{date} {hour}:{minutes}'.format(date=schedule.date, hour=schedule.start_time.hour, minutes=schedule.start_time.minute), settings.DATE_TIME_FORMAT)
-						end_time = datetime.strptime('{date} {hour}:{minutes}'.format(date=schedule.date, hour=schedule.end_time.hour, minutes=schedule.end_time.minute), settings.DATE_TIME_FORMAT)
+						start_time = datetime.strptime('{date} {hour}:{minutes}'.format(
+								date=schedule.date,
+								hour=schedule.start_time.hour,
+								minutes=schedule.start_time.minute
+						), settings.DATE_TIME_FORMAT)
+						end_time = datetime.strptime('{date} {hour}:{minutes}'.format(
+								date=schedule.date,
+								hour=schedule.end_time.hour,
+								minutes=schedule.end_time.minute
+						), settings.DATE_TIME_FORMAT)
 						if (start_time <= datetime.now()) and (datetime.now() <= end_time):
 							for user in schedule.user.all():
-								t = Thread(target=self.push_notification, args=(client, user, serial))
-								t.setDaemon(True)
-								t.start()
+								self.multiple_threading(self.push_notification, self.create_topic, client, user, serial)
 							break
 
-	def push_notification(self, client, user, serial):
+	def multiple_threading(self, push_notification, create_topic, client, user, serial):
+		self.stdout.write('Start multiple threading.')
 		message = message_format(title='Testing', body='Testing', url='www.alert.iotc.vn', acm_id=uuid.uuid1().hex, time=time.time(), serial=serial)
+		t1 = Thread(target=push_notification, args=(client, user, message))
+		t2 = Thread(target=create_topic, args=(client, user, message))
+		t1.setDaemon(True)
+		t2.setDaemon(True)
+		t1.start()
+		t2.start()
+
+	def create_topic(self, client, user, message):
+		test = json.dumps({
+			'aps': {
+				'alert': message,
+				'sound': 'default',
+				'content-available': 1
+			}
+		})
+		client.publish(settings.CUSTOMER_TOPIC_ANNOUNCE.format(name=user.username), test)
+		self.stdout.write('Send message to customer system')
+
+	def push_notification(self, client, user, message):
 		if user.is_online:
 			test = json.dumps({
 				'aps': {
@@ -93,7 +116,6 @@ class Command(BaseCommand):
 				}
 			})
 			client.publish(settings.USER_TOPIC_ANNOUNCE.format(name=user.username), test)
-			client.publish(settings.CUSTOMER_TOPIC_ANNOUNCE.format(name=user.username), test)
 			self.stdout.write('Publish message completed.')
 		else:
 			apns_list = APNS.objects.distinct().filter(user=user)

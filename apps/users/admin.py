@@ -12,7 +12,7 @@ from .models import Customer, Staff
 class CustomerAdmin(UserAdmin):
 	fieldsets = (
 		(None, {'fields': ('username', 'password')}),
-		(_('Personal info'), {'fields': ('first_name', 'last_name', 'email')}),
+		(_('Personal info'), {'fields': ('first_name', 'last_name', 'email', 'is_online')}),
 	)
 	list_display = ('username', 'email', 'is_online', 'last_login')
 	list_filter = ['is_online', 'date_joined']
