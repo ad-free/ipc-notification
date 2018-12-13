@@ -31,7 +31,7 @@ def update_or_create_device(device, name, token, username, new_username, passwor
 		else:
 			obj_device, device_created = device.objects.get_or_create(name=name, user=obj_user)
 			if android:
-				obj_device.cloud_message_type = CLOUD_MESSAGE_TYPES[0][1]
+				obj_device.cloud_message_type = CLOUD_MESSAGE_TYPES[0][0]
 			obj_device.registration_id = token
 			obj_device.save()
 			return True
