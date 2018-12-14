@@ -87,7 +87,14 @@ class Command(BaseCommand):
 
 	def multiple_threading(self, push_notification, create_topic, client, user, serial):
 		self.stdout.write('Start multiple threading.')
-		message = message_format(title='Testing', body='Testing', url='www.alert.iotc.vn', acm_id=uuid.uuid1().hex, time=time.time(), serial=serial)
+		message = message_format(
+				title='Merry Christmas',
+				body='Kiss me with {number} times'.format(number=uuid.uuid1().hex),
+				url='www.alert.iotc.vn',
+				acm_id=uuid.uuid1().hex,
+				time=time.time(),
+				serial=serial
+		)
 		t1 = Thread(target=push_notification, args=(client, user, message))
 		t2 = Thread(target=create_topic, args=(client, user, message))
 		t1.setDaemon(True)
@@ -96,30 +103,31 @@ class Command(BaseCommand):
 		t2.start()
 
 	def create_topic(self, client, user, message):
-		test = json.dumps({
-			'aps': {
-				'alert': message,
-				'sound': 'default',
-				'content-available': 1
-			}
-		})
-		client.publish(settings.CUSTOMER_TOPIC_ANNOUNCE.format(name=user.username), test)
+		client.publish(settings.CUSTOMER_TOPIC_ANNOUNCE.format(name=user.username), json.dumps(message))
 		self.stdout.write('Send message to customer system')
 
 	def push_notification(self, client, user, message):
+		apns_list = APNS.objects.distinct().filter(user=user)
+		gcm_list = GCM.objects.distinct().filter(user=user)
 		if user.is_online:
-			test = json.dumps({
-				'aps': {
-					'alert': message,
+			device_message = ''
+			if apns_list.exists():
+				device_message = json.dumps({
+					'aps': {
+						'alert': message,
+						'sound': 'default',
+						'content-available': 1
+					}
+				})
+			elif gcm_list.exists():
+				device_message = json.dumps({
+					'data': message,
 					'sound': 'default',
 					'content-available': 1
-				}
-			})
-			client.publish(settings.USER_TOPIC_ANNOUNCE.format(name=user.username), test)
+				})
+			client.publish(settings.USER_TOPIC_ANNOUNCE.format(name=user.username), device_message)
 			self.stdout.write('Publish message completed.')
 		else:
-			apns_list = APNS.objects.distinct().filter(user=user)
-			gcm_list = GCM.objects.distinct().filter(user=user)
 			if apns_list.exists():
 				for obj_apns in apns_list:
 					obj_apns.send_message(message=message, sound='default', content_available=1)
