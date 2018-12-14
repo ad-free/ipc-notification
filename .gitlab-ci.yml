@@ -1,4 +1,4 @@
-image: python:latest
+image: python:2.7.15
 
 services:
   - mongo:latest
@@ -13,9 +13,7 @@ stages:
 init:
   stage: init
   script:
-    - apt-get install python-dev python2.7 gcc openssl-devel bzip2-devel
     - python -V
-    - pip install -r req.txt
 
 build:
   stage: build
