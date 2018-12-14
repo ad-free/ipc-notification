@@ -13,6 +13,7 @@ stages:
 init:
   stage: init
   script:
+    - python -V
     - pip install -r req.txt
 
 build:
