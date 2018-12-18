@@ -48,9 +48,12 @@ def api_notification_register(request):
 			'result': True,
 			'message': _('You have successfully registered.')
 		}, status=status.HTTP_200_OK)
-	else:
+	elif result is False:
 		errors.update({'message': _('New username always exists.')})
 		logger.error(logger_format('New username always exists.', api_notification_register.__name__))
+	else:
+		errors.update({'message': _('Your platform is inaccurate.')})
+		logger.error(logger_format('Your platform is inaccurate.', api_notification_register.__name__))
 
 	logger.info(logger_format('<-------  END  ------->', api_notification_register.__name__))
 	return Response({
