@@ -82,16 +82,7 @@ class Command(BaseCommand):
 						), settings.DATE_TIME_FORMAT)
 						if (start_time <= datetime.now()) and (datetime.now() <= end_time):
 							for user in schedule.user.all():
-								message = message_format(
-										title='Merry Christmas',
-										body='Kiss me with {number} times'.format(number=uuid.uuid1().hex),
-										url='www.alert.iotc.vn',
-										acm_id=uuid.uuid1().hex,
-										time=time.time(),
-										serial=serial
-								)
-								self.push_notification(client, user, message)
-								# self.multiple_threading(self.push_notification, self.create_topic, client, user, serial)
+								self.multiple_threading(self.push_notification, self.create_topic, client, user, serial)
 							break
 
 	def multiple_threading(self, push_notification, create_topic, client, user, serial):
