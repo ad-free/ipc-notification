@@ -82,7 +82,16 @@ class Command(BaseCommand):
 						), settings.DATE_TIME_FORMAT)
 						if (start_time <= datetime.now()) and (datetime.now() <= end_time):
 							for user in schedule.user.all():
-								self.multiple_threading(self.push_notification, self.create_topic, client, user, serial)
+								message = message_format(
+										title='Merry Christmas',
+										body='Kiss me with {number} times'.format(number=uuid.uuid1().hex),
+										url='www.alert.iotc.vn',
+										acm_id=uuid.uuid1().hex,
+										time=time.time(),
+										serial=serial
+								)
+								self.push_notification(client, user, message)
+								# self.multiple_threading(self.push_notification, self.create_topic, client, user, serial)
 							break
 
 	def multiple_threading(self, push_notification, create_topic, client, user, serial):
@@ -130,8 +139,18 @@ class Command(BaseCommand):
 		else:
 			if apns_list.exists():
 				for obj_apns in apns_list:
-					obj_apns.send_message(message=message, sound='default', content_available=1)
-			elif gcm_list.exists():
+					try:
+						obj_apns.send_message(message=message, sound='default', content_available=1)
+					except Exception as e:
+						if 'Unregistered' in e:
+							obj_apns.delete()
+						pass
+			if gcm_list.exists():
 				for obj_gcm in gcm_list:
-					obj_gcm.send_message(None, extra=message, use_fcm_notifications=False)
+					try:
+						obj_gcm.send_message(None, extra=message, use_fcm_notifications=False)
+					except Exception as e:
+						if 'Unregistered' in e:
+							obj_gcm.delete()
+						pass
 			self.stdout.write('Sent a notification to user.')
