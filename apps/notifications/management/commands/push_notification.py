@@ -36,8 +36,8 @@ class Command(BaseCommand):
 	def on_connect(self, client, userdata, flags, rc):
 		if rc == 0:
 			self.stdout.write('Connected to broker server.')
-			client.subscribe(settings.USER_TOPIC_STATUS.format(name='+'))
-			client.subscribe(settings.CAMERA_TOPIC_DATA.format(name='+'))
+			for topic in settings.SUBSCRIBE_TOPICS:
+				client.subscribe(topic.format(name='+'))
 		else:
 			self.stdout.write('Connection failed.')
 
@@ -88,9 +88,9 @@ class Command(BaseCommand):
 	def multiple_threading(self, push_notification, create_topic, client, user, serial):
 		self.stdout.write('Start multiple threading.')
 		message = message_format(
-				title='Merry Christmas',
-				body='Kiss me with {number} times'.format(number=uuid.uuid1().hex),
-				url='www.alert.iotc.vn',
+				title=u'{}'.format('Merry Christmas'),
+				body=u'Kiss me with {number} times'.format(number=uuid.uuid1().hex),
+				url=u'{}'.format('www.alert.iotc.vn'),
 				acm_id=uuid.uuid1().hex,
 				time=time.time(),
 				serial=serial
