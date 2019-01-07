@@ -110,7 +110,6 @@ class Command(BaseCommand):
 		apns_list = APNS.objects.distinct().filter(user=user)
 		gcm_list = GCM.objects.distinct().filter(user=user)
 		if user.is_online:
-			device_message = ''
 			if apns_list.exists():
 				device_message = json.dumps({
 					'aps': {
@@ -119,13 +118,14 @@ class Command(BaseCommand):
 						'content-available': 1
 					}
 				})
-			elif gcm_list.exists():
+				client.publish(settings.USER_TOPIC_ANNOUNCE.format(name=user.username), device_message)
+			if gcm_list.exists():
 				device_message = json.dumps({
 					'data': message,
 					'sound': 'default',
 					'content-available': 1
 				})
-			client.publish(settings.USER_TOPIC_ANNOUNCE.format(name=user.username), device_message)
+				client.publish(settings.USER_TOPIC_ANNOUNCE.format(name=user.username), device_message)
 			self.stdout.write('Publish message completed.')
 		else:
 			if apns_list.exists():
