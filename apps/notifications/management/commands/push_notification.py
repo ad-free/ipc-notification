@@ -4,6 +4,7 @@ from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.utils.translation import ugettext_lazy as _
 
+from apps.commons.utils import logger_format
 from apps.schedule.models import Schedule
 from apps.users.models import Customer
 from apps.notifications.models import GCM, APNS
@@ -17,6 +18,9 @@ import paho.mqtt.client as mqtt
 import uuid
 import json
 import time
+import logging
+
+logger = logging.getLogger('')
 
 
 class Command(BaseCommand):
@@ -133,6 +137,7 @@ class Command(BaseCommand):
 					try:
 						obj_apns.send_message(message=message, sound='default', content_available=1)
 					except Exception as e:
+						logger.error(logger_format('{}-{}'.format(obj_apns.registration_id, e), self.push_notification.__name__))
 						if 'Unregistered' in e:
 							obj_apns.delete()
 						pass
@@ -141,6 +146,7 @@ class Command(BaseCommand):
 					try:
 						obj_gcm.send_message(None, extra=message, use_fcm_notifications=False)
 					except Exception as e:
+						logger.error(logger_format('{}-{}'.format(obj_gcm.registration_id, e), self.push_notification.__name__))
 						if 'Unregistered' in e:
 							obj_gcm.delete()
 						pass
