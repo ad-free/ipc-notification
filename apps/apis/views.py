@@ -91,8 +91,18 @@ def api_notification_update(request):
 			errors.update({'message': _('User does not exists.')})
 		else:
 			if len(new_username) > 0:
-				user.username = new_username
-				user.save()
+				try:
+					Customer.objects.get(username=new_username)
+					errors.update({'message': _('New username always exists.')})
+					logger.info(logger_format('<-------  END  ------->', api_notification_update.__name__))
+					return Response({
+						'status': status.HTTP_400_BAD_REQUEST,
+						'result': False,
+						'errors': errors
+					}, status=status.HTTP_200_OK)
+				except Customer.DoesNotExist:
+					user.username = new_username
+					user.save()
 			else:
 				if is_unshared == '1':
 					obj_schedule = Schedule.objects.filter(serial=serial)
