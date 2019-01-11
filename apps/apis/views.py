@@ -28,7 +28,6 @@ def api_notification_register(request):
 	errors = {}
 	result = ''
 	username = request.POST.get('username', '').strip()
-	new_username = request.POST.get('new_username', '').strip()
 	password = request.POST.get('password', '')
 	platform = request.POST.get('platform', '').strip()
 	device_token = request.POST.get('device_token', '').strip()
@@ -37,9 +36,9 @@ def api_notification_register(request):
 
 	logger.info(logger_format('Check your platform', api_notification_register.__name__))
 	if platform == 'apns':
-		result = update_or_create_device(APNS, name, device_token, username, new_username, password, False)
+		result = update_or_create_device(APNS, name, device_token, username, password, False)
 	elif platform == 'fcm':
-		result = update_or_create_device(GCM, name, device_token, username, new_username, password, True)
+		result = update_or_create_device(GCM, name, device_token, username, password, True)
 
 	if result:
 		logger.info(logger_format('<-------  END  ------->', api_notification_register.__name__))
@@ -69,50 +68,66 @@ def api_notification_update(request):
 	logger.info(logger_format('<-------  START  ------->', api_notification_update.__name__))
 	errors = {}
 	username = request.POST.get('username', '').strip()
+	new_username = request.POST.get('new_username', '').strip()
 	serial = request.POST.get('serial', '').strip()
 	schedule_list = request.POST.get('schedule', '').strip()
 	is_unshared = request.POST.get('is_unshared', '').strip()
 
-	try:
-		user = Customer.objects.get(username=username)
-	except Customer.DoesNotExist:
-		logger.error(logger_format('User does not exists.', api_notification_update.__name__))
-		errors.update({'message': _('User does not exists.')})
-	else:
-		if is_unshared == '1':
-			obj_schedule = Schedule.objects.filter(serial=serial)
-			if obj_schedule.exists():
-				for schedule in obj_schedule:
-					schedule.user.remove(user)
+	if not username:
+		errors.update({'username': _('This field is required.')})
+	if not new_username:
+		if not serial:
+			errors.update({'serial': _('This field is required.')})
+		if not schedule_list:
+			errors.update({'schedule_list': _('This field is required.')})
+		if not is_unshared:
+			errors.update({'is_unshared': _('This field is required.')})
+
+	if not errors:
+		try:
+			user = Customer.objects.get(username=username)
+		except Customer.DoesNotExist:
+			logger.error(logger_format('User does not exists.', api_notification_update.__name__))
+			errors.update({'message': _('User does not exists.')})
 		else:
-			for schedule in literal_eval(schedule_list):
-				data_default = {
-					'start_time': schedule['begin_at'],
-					'end_time': schedule['end_at'],
-					'repeat_status': int(schedule['repeat_status']),
-					'is_active': True if int(schedule['is_active']) == 1 else False
-				}
-				if int(schedule['repeat_status']) == 0:
-					data_default.update({'date': schedule['repeat_at'], 'repeat_at': None})
+			if len(new_username) > 0:
+				user.username = new_username
+				user.save()
+			else:
+				if is_unshared == '1':
+					obj_schedule = Schedule.objects.filter(serial=serial)
+					if obj_schedule.exists():
+						for schedule in obj_schedule:
+							schedule.user.remove(user)
 				else:
-					data_default.update({'date': None, 'repeat_at': schedule['repeat_at']})
-				obj_schedule, schedule_created = Schedule.objects.update_or_create(
-						serial=serial,
-						schedule_id=schedule['schedule_id'],
-						defaults=data_default
-				)
-				if int(schedule['is_active']) == 1:
-					obj_schedule.user.add(user)
-				else:
-					obj_schedule.user.remove(user)
-					if obj_schedule.user.count() == 0:
-						obj_schedule.delete()
-		logger.info(logger_format('<-------  END  ------->', api_notification_update.__name__))
-		return Response({
-			'status': status.HTTP_200_OK,
-			'result': True,
-			'message': _('Update your schedule successfully.')
-		}, status=status.HTTP_200_OK)
+					for schedule in literal_eval(schedule_list):
+						data_default = {
+							'start_time': schedule['begin_at'],
+							'end_time': schedule['end_at'],
+							'repeat_status': int(schedule['repeat_status']),
+							'is_active': True if int(schedule['is_active']) == 1 else False
+						}
+						if int(schedule['repeat_status']) == 0:
+							data_default.update({'date': schedule['repeat_at'], 'repeat_at': None})
+						else:
+							data_default.update({'date': None, 'repeat_at': schedule['repeat_at']})
+						obj_schedule, schedule_created = Schedule.objects.update_or_create(
+								serial=serial,
+								schedule_id=schedule['schedule_id'],
+								defaults=data_default
+						)
+						if int(schedule['is_active']) == 1:
+							obj_schedule.user.add(user)
+						else:
+							obj_schedule.user.remove(user)
+							if obj_schedule.user.count() == 0:
+								obj_schedule.delete()
+			logger.info(logger_format('<-------  END  ------->', api_notification_update.__name__))
+			return Response({
+				'status': status.HTTP_200_OK,
+				'result': True,
+				'message': _('You have successfully updated.')
+			}, status=status.HTTP_200_OK)
 
 	logger.info(logger_format('<-------  END  ------->', api_notification_update.__name__))
 	return Response({
