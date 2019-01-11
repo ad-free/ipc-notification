@@ -26,7 +26,7 @@ logger = logging.getLogger('')
 def api_notification_register(request):
 	logger.info(logger_format('<-------  START  ------->', api_notification_register.__name__))
 	errors = {}
-	result = ''
+	result = {'success': '', 'message': ''}
 	username = request.POST.get('username', '').strip()
 	password = request.POST.get('password', '')
 	platform = request.POST.get('platform', '').strip()
@@ -40,16 +40,16 @@ def api_notification_register(request):
 	elif platform == 'fcm':
 		result = update_or_create_device(GCM, name, device_token, username, password, True)
 
-	if result:
+	if result['success']:
 		logger.info(logger_format('<-------  END  ------->', api_notification_register.__name__))
 		return Response({
 			'status': status.HTTP_200_OK,
 			'result': True,
-			'message': _('You have successfully registered.')
+			'message': result['message']
 		}, status=status.HTTP_200_OK)
-	elif result is False:
-		errors.update({'message': _('New username always exists.')})
-		logger.error(logger_format('New username always exists.', api_notification_register.__name__))
+	elif result['success'] is False:
+		errors.update({'message': result['message']})
+		logger.error(logger_format(result['message'], api_notification_register.__name__))
 	else:
 		errors.update({'message': _('Your platform is inaccurate.')})
 		logger.error(logger_format('Your platform is inaccurate.', api_notification_register.__name__))
