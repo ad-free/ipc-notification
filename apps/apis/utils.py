@@ -27,10 +27,11 @@ def update_or_create_device(device, name, token, username, password, android=Fal
 		except Exception:
 			pass
 		else:
-			obj_device, device_created = device.objects.get_or_create(name=name, user=obj_user)
+			obj_device, device_created = device.objects.get_or_create(name=name, registration_id=token)
 			if android:
 				obj_device.cloud_message_type = CLOUD_MESSAGE_TYPES[0][0]
-			obj_device.registration_id = token
+			obj_device.user = obj_user
+			obj_device.is_active = True
 			obj_device.save()
 			return {'success': True, 'message': _('You have successfully updated.')}
 	return {'success': False, 'message': _('Device token always exists.')}
