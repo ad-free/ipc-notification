@@ -19,6 +19,7 @@ import uuid
 import json
 import time
 import logging
+import ssl
 
 logger = logging.getLogger('')
 
@@ -33,11 +34,21 @@ class Command(BaseCommand):
 		client = mqtt.Client('iot-{}'.format(uuid.uuid1().hex))
 		client.on_connect = self.on_connect
 		client.on_message = self.on_message
+		client.tls_set(
+				ca_certs=settings.CA_ROOT_CERT_FILE,
+				certfile=settings.CA_ROOT_CERT_CLIENT,
+				keyfile=settings.CA_ROOT_CERT_KEY,
+				cert_reqs=ssl.CERT_NONE,
+				tls_version=settings.CA_ROOT_TLS_VERSION,
+				ciphers=settings.CA_ROOT_CERT_CIPHERS
+		)
+		# client.tls_insecure_set(False)
 		client.connect(host=settings.API_QUEUE_HOST, port=settings.API_QUEUE_PORT)
 		client.username_pw_set(username=settings.API_ALERT_USERNAME, password=settings.API_ALERT_PASSWORD)
 		client.loop_forever()
 
 	def on_connect(self, client, userdata, flags, rc):
+		self.stdout.write('Connecting.......')
 		if rc == 0:
 			self.stdout.write('Connected to broker server.')
 			for topic in settings.SUBSCRIBE_TOPICS:
@@ -92,11 +103,11 @@ class Command(BaseCommand):
 	def multiple_threading(self, push_notification, create_topic, client, user, serial):
 		self.stdout.write('Start multiple threading.')
 		message = message_format(
-				title=u'{}'.format('Merry Christmas'),
-				body=u'Kiss me with {number} times'.format(number=uuid.uuid1().hex),
+				title=u'{}'.format('Thông báo'),
+				body=u'Phát hiện chuyển động.'.format(number=uuid.uuid1().hex),
 				url=u'{}'.format('www.alert.iotc.vn'),
 				acm_id=uuid.uuid1().hex,
-				time=time.time(),
+				time=int(time.time()),
 				serial=serial
 		)
 		t1 = Thread(target=push_notification, args=(client, user, message))
