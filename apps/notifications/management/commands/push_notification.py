@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from __future__ import absolute_import
 
 from django.conf import settings
@@ -10,7 +11,6 @@ from apps.users.models import Customer
 from apps.notifications.models import GCM, APNS
 
 from apps.apis.utils import message_format
-from pytz import unicode
 from datetime import datetime, timedelta
 from threading import Thread
 
@@ -25,7 +25,7 @@ logger = logging.getLogger('')
 
 
 class Command(BaseCommand):
-	help = unicode(_('Push notification to user.'))
+	help = _('Push notification to user.')
 
 	def add_arguments(self, parser):
 		parser.add_argument('--serial', action='store', type=str, default=None, help=_('Camera serial'))
@@ -104,7 +104,7 @@ class Command(BaseCommand):
 		self.stdout.write('Start multiple threading.')
 		message = message_format(
 				title=u'{}'.format('Thông báo'),
-				body=u'Phát hiện chuyển động.'.format(number=uuid.uuid1().hex),
+				body=u'Chúc mừng năm mới {number}.'.format(number=2019),
 				url=u'{}'.format('www.alert.iotc.vn'),
 				acm_id=uuid.uuid1().hex,
 				time=int(time.time()),
@@ -148,8 +148,8 @@ class Command(BaseCommand):
 					try:
 						obj_apns.send_message(message=message, sound='default', content_available=1)
 					except Exception as e:
-						logger.error(logger_format('{}-{}'.format(obj_apns.registration_id, e), self.push_notification.__name__))
-						if 'Unregistered' in e:
+						logger.error(logger_format(u'{}-{}'.format(obj_apns.registration_id, e), self.push_notification.__name__))
+						if 'Unregistered' in str(e):
 							obj_apns.delete()
 						pass
 			if gcm_list.exists():
@@ -157,8 +157,8 @@ class Command(BaseCommand):
 					try:
 						obj_gcm.send_message(None, extra=message, use_fcm_notifications=False)
 					except Exception as e:
-						logger.error(logger_format('{}-{}'.format(obj_gcm.registration_id, e), self.push_notification.__name__))
-						if 'Unregistered' in e:
+						logger.error(logger_format(u'{}-{}'.format(obj_gcm.registration_id, e), self.push_notification.__name__))
+						if 'Unregistered' in str(e):
 							obj_gcm.delete()
 						pass
 			self.stdout.write('Sent a notification to user.')
