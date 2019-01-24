@@ -115,6 +115,8 @@ venv.bak/
 /running
 /deploy.sh
 /gunicorn.pid
+/static
+/scripts
 
 /media
 /config
