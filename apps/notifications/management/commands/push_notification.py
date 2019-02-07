@@ -60,19 +60,7 @@ class Command(BaseCommand):
 		data = json.loads(message.payload)
 		serial = message.topic.split('/')[1]
 
-		if message.topic.startswith('user'):
-			try:
-				obj_user = Customer.objects.get(username=serial)
-			except Customer.DoesNotExist:
-				pass
-			else:
-				if 'status' in data:
-					if data['status'] == 'online':
-						obj_user.is_online = True
-					else:
-						obj_user.is_online = False
-					obj_user.save()
-		else:
+		if message.topic.startswith('ipc') and message.topic.endswith('alarm'):
 			obj_schedule = Schedule.objects.filter(serial=serial)
 			if obj_schedule.exists():
 				for schedule in obj_schedule:
@@ -82,35 +70,35 @@ class Command(BaseCommand):
 							if (timedelta(hours=schedule.start_time.hour, minutes=schedule.start_time.minute) <= now) and (
 									now <= timedelta(hours=schedule.end_time.hour, minutes=schedule.end_time.minute)):
 								for user in schedule.user.all():
-									self.multiple_threading(self.push_notification, self.create_topic, client, user, serial)
+									self.multiple_threading(self.push_notification, self.create_topic, client, user, serial, data)
 								break
 					else:
 						start_time = datetime.strptime('{date} {hour}:{minutes}'.format(
-								date=schedule.date,
-								hour=schedule.start_time.hour,
-								minutes=schedule.start_time.minute
+							date=schedule.date,
+							hour=schedule.start_time.hour,
+							minutes=schedule.start_time.minute
 						), settings.DATE_TIME_FORMAT)
 						end_time = datetime.strptime('{date} {hour}:{minutes}'.format(
-								date=schedule.date,
-								hour=schedule.end_time.hour,
-								minutes=schedule.end_time.minute
+							date=schedule.date,
+							hour=schedule.end_time.hour,
+							minutes=schedule.end_time.minute
 						), settings.DATE_TIME_FORMAT)
 						if (start_time <= datetime.now()) and (datetime.now() <= end_time):
 							for user in schedule.user.all():
-								self.multiple_threading(self.push_notification, self.create_topic, client, user, serial)
+								self.multiple_threading(self.push_notification, self.create_topic, client, user, serial, data)
 							break
 
-	def multiple_threading(self, push_notification, create_topic, client, user, serial):
+	def multiple_threading(self, push_notification, create_topic, client, user, serial, data):
 		self.stdout.write('Start multiple threading.')
 		message = message_format(
-				title=u'{}'.format('Thông báo'),
-				body=u'Chúc mừng năm mới {number}.'.format(number=2019),
-				url=u'{}'.format('www.alert.iotc.vn'),
-				acm_id=uuid.uuid1().hex,
-				time=int(time.time()),
-				serial=serial
+			title=u'{}'.format('Thông báo'),
+			body=u'Chúc mừng năm mới {number}.'.format(number=2019),
+			url=u'{}'.format('www.alert.iotc.vn'),
+			acm_id=uuid.uuid1().hex,
+			time=int(time.time()),
+			serial=serial
 		)
-		t1 = Thread(target=push_notification, args=(client, user, message))
+		t1 = Thread(target=push_notification, args=(client, user, message, data))
 		t2 = Thread(target=create_topic, args=(client, user, message))
 		t1.setDaemon(True)
 		t2.setDaemon(True)
@@ -121,10 +109,13 @@ class Command(BaseCommand):
 		client.publish(settings.CUSTOMER_TOPIC_ANNOUNCE.format(name='inbox'), json.dumps(message))
 		self.stdout.write('Send message to customer system')
 
-	def push_notification(self, client, user, message):
+	def push_notification(self, client, user, message, data):
 		apns_list = APNS.objects.distinct().filter(user=user)
 		gcm_list = GCM.objects.distinct().filter(user=user)
-		if user.is_online:
+
+		client.subscribe(settings.USER_TOPIC_STATUS.format(name=user.username))
+
+		if data['status'] == 'online':
 			if apns_list.exists():
 				device_message = json.dumps({
 					'aps': {
