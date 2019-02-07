@@ -7,7 +7,6 @@ from django.utils.translation import ugettext_lazy as _
 
 from apps.commons.utils import logger_format
 from apps.schedule.models import Schedule
-from apps.users.models import Customer
 from apps.notifications.models import GCM, APNS
 
 from apps.apis.utils import message_format
