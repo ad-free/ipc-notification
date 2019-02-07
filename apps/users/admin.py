@@ -12,10 +12,10 @@ from .models import Customer, Staff
 class CustomerAdmin(UserAdmin):
 	fieldsets = (
 		(None, {'fields': ('username', 'password')}),
-		(_('Personal info'), {'fields': ('first_name', 'last_name', 'email', 'is_online')}),
+		(_('Personal info'), {'fields': ('first_name', 'last_name', 'email',)}),
 	)
-	list_display = ('username', 'email', 'is_online', 'last_login')
-	list_filter = ['is_online', 'date_joined']
+	list_display = ('username', 'email', 'last_login')
+	list_filter = ['date_joined']
 	exclude = ('groups',)
 
 	def get_queryset(self, request):
