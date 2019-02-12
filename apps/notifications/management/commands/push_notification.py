@@ -30,6 +30,7 @@ class Command(BaseCommand):
 		parser.add_argument('--serial', action='store', type=str, default=None, help=_('Camera serial'))
 
 	def handle(self, *args, **options):
+		self.status = {}
 		client = mqtt.Client('iot-{}'.format(uuid.uuid1().hex))
 		client.on_connect = self.on_connect
 		client.on_message = self.on_message
@@ -59,6 +60,10 @@ class Command(BaseCommand):
 		data = json.loads(message.payload)
 		serial = message.topic.split('/')[1]
 
+		if message.topic.startswith('user'):
+			username = message.topic.split('/')[1]
+			self.status.update({username: data['status']})
+
 		if message.topic.startswith('ipc') and message.topic.endswith('alarm'):
 			obj_schedule = Schedule.objects.filter(serial=serial)
 			if obj_schedule.exists():
@@ -69,7 +74,7 @@ class Command(BaseCommand):
 							if (timedelta(hours=schedule.start_time.hour, minutes=schedule.start_time.minute) <= now) and (
 									now <= timedelta(hours=schedule.end_time.hour, minutes=schedule.end_time.minute)):
 								for user in schedule.user.all():
-									self.multiple_threading(self.push_notification, self.create_topic, client, user, serial, data)
+									self.multiple_threading(self.push_notification, self.create_topic, client, user, serial)
 								break
 					else:
 						start_time = datetime.strptime('{date} {hour}:{minutes}'.format(
@@ -84,10 +89,10 @@ class Command(BaseCommand):
 						), settings.DATE_TIME_FORMAT)
 						if (start_time <= datetime.now()) and (datetime.now() <= end_time):
 							for user in schedule.user.all():
-								self.multiple_threading(self.push_notification, self.create_topic, client, user, serial, data)
+								self.multiple_threading(self.push_notification, self.create_topic, client, user, serial)
 							break
 
-	def multiple_threading(self, push_notification, create_topic, client, user, serial, data):
+	def multiple_threading(self, push_notification, create_topic, client, user, serial):
 		self.stdout.write('Start multiple threading.')
 		message = message_format(
 			title=u'{}'.format('Thông báo'),
@@ -97,7 +102,7 @@ class Command(BaseCommand):
 			time=int(time.time()),
 			serial=serial
 		)
-		t1 = Thread(target=push_notification, args=(client, user, message, data))
+		t1 = Thread(target=push_notification, args=(client, user, message))
 		t2 = Thread(target=create_topic, args=(client, user, message))
 		t1.setDaemon(True)
 		t2.setDaemon(True)
@@ -108,47 +113,48 @@ class Command(BaseCommand):
 		client.publish(settings.CUSTOMER_TOPIC_ANNOUNCE.format(name='inbox'), json.dumps(message))
 		self.stdout.write('Send message to customer system')
 
-	def push_notification(self, client, user, message, data):
+	def push_notification(self, client, user, message):
 		apns_list = APNS.objects.distinct().filter(user=user)
 		gcm_list = GCM.objects.distinct().filter(user=user)
 
-		client.subscribe(settings.USER_TOPIC_STATUS.format(name=user.username))
-
-		if data['status'] == 'online':
-			if apns_list.exists():
-				device_message = json.dumps({
-					'aps': {
-						'alert': message,
+		try:
+			if self.status[user.username] == 'online':
+				if apns_list.exists():
+					device_message = json.dumps({
+						'aps': {
+							'alert': message,
+							'sound': 'default',
+							'content-available': 1
+						}
+					})
+					client.publish(settings.USER_TOPIC_ANNOUNCE.format(name=user.username), device_message)
+				if gcm_list.exists():
+					device_message = json.dumps({
+						'data': message,
 						'sound': 'default',
 						'content-available': 1
-					}
-				})
-				client.publish(settings.USER_TOPIC_ANNOUNCE.format(name=user.username), device_message)
-			if gcm_list.exists():
-				device_message = json.dumps({
-					'data': message,
-					'sound': 'default',
-					'content-available': 1
-				})
-				client.publish(settings.USER_TOPIC_ANNOUNCE.format(name=user.username), device_message)
-			self.stdout.write('Publish message completed.')
-		else:
-			if apns_list.exists():
-				for obj_apns in apns_list:
-					try:
-						obj_apns.send_message(message=message, sound='default', content_available=1)
-					except Exception as e:
-						logger.error(logger_format(u'{}-{}'.format(obj_apns.registration_id, e), self.push_notification.__name__))
-						if 'Unregistered' in str(e):
-							obj_apns.delete()
-						pass
-			if gcm_list.exists():
-				for obj_gcm in gcm_list:
-					try:
-						obj_gcm.send_message(None, extra=message, use_fcm_notifications=False)
-					except Exception as e:
-						logger.error(logger_format(u'{}-{}'.format(obj_gcm.registration_id, e), self.push_notification.__name__))
-						if 'Unregistered' in str(e):
-							obj_gcm.delete()
-						pass
-			self.stdout.write('Sent a notification to user.')
+					})
+					client.publish(settings.USER_TOPIC_ANNOUNCE.format(name=user.username), device_message)
+				self.stdout.write('Publish message completed.')
+			else:
+				if apns_list.exists():
+					for obj_apns in apns_list:
+						try:
+							obj_apns.send_message(message=message, sound='default', content_available=1)
+						except Exception as e:
+							logger.error(logger_format(u'{}-{}'.format(obj_apns.registration_id, e), self.push_notification.__name__))
+							if 'Unregistered' in str(e):
+								obj_apns.delete()
+							pass
+				if gcm_list.exists():
+					for obj_gcm in gcm_list:
+						try:
+							obj_gcm.send_message(None, extra=message, use_fcm_notifications=False)
+						except Exception as e:
+							logger.error(logger_format(u'{}-{}'.format(obj_gcm.registration_id, e), self.push_notification.__name__))
+							if 'Unregistered' in str(e):
+								obj_gcm.delete()
+							pass
+				self.stdout.write('Sent a notification to user.')
+		except KeyError as e:
+			logger.error(logger_format(u'{}-{}'.format(user.username, e), self.push_notification.__name__))
