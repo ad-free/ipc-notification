@@ -4,10 +4,14 @@
 	$(document).ready(function () {
 		try {
 			var server = $('.server-info');
+			var is_ssl = false;
 			var host = server.attr('data-host');
 			var port = server.attr('data-port');
 			var topic = server.attr('data-topic').replace('{name}', '+');
-			__init__(host, port, topic);
+			if (server.attr('data-ssl') === 'True') {
+				is_ssl = true;
+			}
+			__init__(host, port, topic, is_ssl);
 		} catch (e) {
 		}
 	});
@@ -29,7 +33,7 @@
 
 
 	// called when the client connects
-	function __init__(host, port, topic) {
+	function __init__(host, port, topic, ssl) {
 		// Once a connection has been made, make a subscription and send a message.
 		var tmp_timeout;
 		try {
@@ -39,7 +43,7 @@
 			var clientID = 'iot-' + uuid('hex');
 			var client = new Paho.MQTT.Client(host, Number(port), clientID);
 			var options = {
-				useSSL: false,
+				useSSL: ssl,
 				timeout: 60,
 				userName: 'notify',
 				password: 'abcd@123456',
