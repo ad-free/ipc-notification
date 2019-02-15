@@ -110,7 +110,7 @@ class Command(BaseCommand):
 		t2.start()
 
 	def create_topic(self, client, user, message):
-		client.publish(settings.CUSTOMER_TOPIC_ANNOUNCE.format(name='inbox'), json.dumps(message))
+		client.publish(settings.USER_TOPIC_ANNOUNCE.format(name=user.username), json.dumps(message))
 		self.stdout.write('Send message to customer system')
 
 	def push_notification(self, client, user, message):
