@@ -13,6 +13,8 @@ def server_info(name):
 		return getattr(settings, 'API_QUEUE_HOST', '')
 	elif name == 'port':
 		return getattr(settings, 'API_QUEUE_WEBSOCKET_PORT', '')
+	elif name == 'ssl':
+		return getattr(settings, 'API_QUEUE_SSL', '')
 	elif name == 'topic':
 		return getattr(settings, 'USER_TOPIC_STATUS', '')
 	return ''
