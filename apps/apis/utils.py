@@ -17,11 +17,9 @@ import logging
 logger = logging.getLogger('')
 
 
-def update_or_create_device(device, name, token, username, new_username, password, android=False):
+def update_or_create_device(device, name, token, username, password, android=False):
 	obj_user, user_created = Customer.objects.get_or_create(username=username)
 	if obj_user:
-		if len(new_username) > 0:
-			obj_user.username = new_username
 		obj_user.password = make_password(password)
 		# noinspection PyBroadException
 		try:
@@ -29,13 +27,14 @@ def update_or_create_device(device, name, token, username, new_username, passwor
 		except Exception:
 			pass
 		else:
-			obj_device, device_created = device.objects.get_or_create(name=name, user=obj_user)
+			obj_device, device_created = device.objects.get_or_create(name=name, registration_id=token)
 			if android:
 				obj_device.cloud_message_type = CLOUD_MESSAGE_TYPES[0][0]
-			obj_device.registration_id = token
+			obj_device.user = obj_user
+			obj_device.is_active = True
 			obj_device.save()
-			return True
-	return False
+			return {'success': True, 'message': _('You have successfully updated.')}
+	return {'success': False, 'message': _('Device token always exists.')}
 
 
 def message_format(title='', body='', url='', acm_id='', time='', serial=''):
