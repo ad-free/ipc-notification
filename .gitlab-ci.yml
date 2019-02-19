@@ -25,9 +25,9 @@ before_script:
   - pwd; python -m pip --version
 
 stages:
-  - init
+  - build
 
-init:
+build:
   script:
     - echo 'Testing'
   only:
