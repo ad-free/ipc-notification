@@ -10,15 +10,9 @@ services:
 
 # This is a basic example for a gem or script which doesn't use
 before_script:
-  # - yum install gcc openssl-devel bzip2-devel
-  # - wget https://www.python.org/ftp/python/3.7.2/Python-3.7.2.tgz
-  # - tar xzf Python-3.7.2.tgz
-  # - cd Python-3.7.2
-  # - ./configure --enable-optimizations
-  # - make altinstall
-  # # - rm /usr/src/Python-3.7.2.tgz
-  # - python3.7 -V
   - python -V
+  - python -m pip --version
+  - python -m pip install --upgrade pip
 
 stages:
   - init
