@@ -1,18 +1,18 @@
 {
   "data": [
 	{
-	  "username": "8497623702",
+	  "username": "84976237026",
 	  "password": "f66edb256eeaca",
 	  "platform": "apns",
-	  "device_token": "fcc530639f6e362c5277b7209b708fa004e9",
-	  "bundle": "fcc530639f6e362c5277b7209b708fa004e9"
+	  "device_token": "fcc530639f6e362c5277b7209b708fa004e91232132132132132132132132",
+	  "bundle": "cmr.iotc.vn"
 	},
 	{
 	  "username": "8497623707",
-	  "password": "f66edb256eea99",
+	  "password": "f66edb256eea991212",
 	  "platform": "fcm",
-	  "device_token": "fcc530639f6e362c5277b7209b708fa004e9",
-	  "bundle": "fcc530639f6e362c5277b7209b708fa004e9"
+	  "device_token": "afadfdsafdasxzbjyrjqtqfdasfadsfcc530639f6e362c5277b7209b708fa004e9",
+	  "bundle": "cmr.iotc.vn"
 	}
   ]
 }
