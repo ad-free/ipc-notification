@@ -15,6 +15,7 @@ services:
 # This is a basic example for a gem or script which doesn't use
 before_script:
   - pip install -r req.txt
+  - ls
 
 stages:
   - init
