@@ -4,26 +4,46 @@
 image: python:latest
 
 services:
-  - mongo:4.0.6
+  - mongo:latest
 
-# variables:
-#   - MONGO_INITDB_ROOT_USERNAME: root
-#   - MONGO_INITDB_ROOT_PASSWORD: example
+variables:
+  MONGODB_URI: 'mongodb://mongo:27017/api_alert'
+# MONGO_INITDB_ROOT_USERNAME: root
+# MONGO_INITDB_ROOT_PASSWORD: example
 
-# This is a basic example for a gem or script which doesn't use
 before_script:
   - pip install -r req.txt
 
 stages:
-  - init
+  - test_login_api
+  - test_update_api
+  - test_active_api
+  - test_delete_api
 
-init:
-  stage: init
-  services:
-    - mongo:latest
-  variables:
-    MONGODB_URI: 'mongodb://mongo:27017/api_alert'
+first_test:
+  stage: test_login_api
   script:
-    - python manage.py test --pattern='login.py'
+    - python manage.py test --pattern='register.py'
+  only:
+    - branches
+
+second_test:
+  stage: test_update_api
+  script:
+    - python manage.py test --pattern='update.py'
+  only:
+    - branches
+
+third_test:
+  stage: test_active_api
+  script:
+    - echo 'Third test'
+  only:
+    - branches
+
+fourth_test:
+  stage: test_delete_api
+  script:
+    - echo 'Fourth test'
   only:
     - branches

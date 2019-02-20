@@ -81,9 +81,6 @@ DATABASES = {
 	'default': {
 		'ENGINE': 'apps.mongolink',
 		'NAME': 'db_alert',
-		# 'USER': '',
-		# 'PASSWORD': '',
-		# 'HOST': '118.69.135.186',
 		'HOST': 'mongo',
 		'PORT': 27017
 	}

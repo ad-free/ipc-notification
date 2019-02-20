@@ -221,19 +221,22 @@ def api_notification_delete(request):
 		if is_delete == '1':
 			Schedule.objects.filter(serial=serial).delete()
 		else:
-			for schedule in literal_eval(schedule_list):
-				try:
+			try:
+				for schedule in literal_eval(schedule_list):
 					obj_schedule = Schedule.objects.get(serial=serial, schedule_id=schedule)
 					obj_schedule.delete()
-				except Schedule.DoesNotExist:
-					logger.warning(logger_format('Schedule does not exists.', api_notification_delete.__name__))
-					errors.update({'message': _('Schedule does not exists.')})
+			except Schedule.DoesNotExist:
+				logger.warning(logger_format('Schedule does not exists.', api_notification_delete.__name__))
+				errors.update({'message': _('Schedule does not exists.')})
+			except Exception as e:
+				logger.warning(logger_format(e, api_notification_delete.__name__))
+				errors.update({'message': _('Please check your parameters.')})
 
 		logger.info(logger_format('<-------  END  ------->', api_notification_delete.__name__))
 		return Response({
 			'status': status.HTTP_200_OK,
 			'result': True,
-			'message': _('You have successfully deleted the notification.')
+			'message': _('You have successfully deleted the notification.') if not errors else errors['message']
 		}, status=status.HTTP_200_OK)
 
 	logger.info(logger_format('<-------  END  ------->', api_notification_delete.__name__))

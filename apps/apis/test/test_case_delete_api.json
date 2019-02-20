@@ -1,0 +1,11 @@
+{
+	"data": [{
+		"serial": "AAAAAAAA01",
+		"schedule_id": "e109c67a-17b8-11e9-bda9-4ccc6a91a365",
+		"is_delete": 0
+	}, {
+		"serial": "AAAAAAAA02",
+		"schedule_id": "e109c67a-17b8-11e9-bda9-4ccc6a91a365",
+		"is_delete": 0
+	}]
+}
