@@ -80,11 +80,11 @@ WSGI_APPLICATION = 'apiAlert.wsgi.application'
 DATABASES = {
 	'default': {
 		'ENGINE': 'apps.mongolink',
-		'NAME': 'db_notification_uuid',
+		'NAME': 'db_alert',
 		# 'USER': '',
 		# 'PASSWORD': '',
 		# 'HOST': '118.69.135.186',
-		'HOST': '127.0.0.1',
+		'HOST': 'mongo',
 		'PORT': 27017
 	}
 }

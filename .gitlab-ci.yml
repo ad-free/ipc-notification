@@ -22,7 +22,7 @@ init:
   services:
     - mongo:latest
   variables:
-    MONGODB_URI: 'mongodb://127.0.0.1:27017/db_notification_uuid'
+    MONGODB_URI: 'mongodb://mongo:27017/api_alert'
   script:
     - python manage.py test --pattern='login.py'
   only:
