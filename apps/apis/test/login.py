@@ -19,7 +19,7 @@ class AnimalTestCase(TestCase):
 		self.content_type = 'application/json'
 
 	def test_register(self):
-		self.url = API_ALERT_LIST['register'].format(protocol=API_ALERT_PROTOCOL, host=API_ALERT_HOST, port=API_ALERT_PORT)
+		self.url = API_ALERT_LIST['register'].format(protocol=API_ALERT_PROTOCOL, host=API_ALERT_HOST)
 		cases = [
 			{
 				"username": "8497623702",
