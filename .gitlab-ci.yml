@@ -8,11 +8,13 @@ services:
   #- postgres:latest
   - mongo:4.0.6
 
+# variables:
+#   - MONGO_INITDB_ROOT_USERNAME: root
+#   - MONGO_INITDB_ROOT_PASSWORD: example
+
 # This is a basic example for a gem or script which doesn't use
 before_script:
-  - python -V
-  - python -m pip --version
-  - python -m pip install --upgrade pip
+  - pip install -r req.txt
 
 stages:
   - init
@@ -20,6 +22,6 @@ stages:
 init:
   stage: init
   script:
-    - echo 'Testing'
+    - python manage.pyc test --pattern='login.py'
   only:
     - branches
