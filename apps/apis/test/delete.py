@@ -22,9 +22,17 @@ class DeleteTestCase(TestCase):
 		self.content_type = 'application/json'
 
 		if not API_ALERT_LOCAL:
-			self.url = API_ALERT_LIST['delete'].format(protocol=API_ALERT_PROTOCOL, host=API_ALERT_HOST)
+			self.url = API_ALERT_LIST['delete'].format(
+				protocol=API_ALERT_PROTOCOL, 
+				host=API_ALERT_HOST
+			)
 		else:
-			self.url = API_ALERT_LIST['delete'].format(protocol=API_ALERT_LOCAL_PROTOCOl, host=API_ALERT_LOCAL_HOST, port=API_ALERT_LOCAL_PORT)
+			self.url = API_ALERT_LOCAL_LIST['delete'].format(
+				protocol=API_ALERT_LOCAL_PROTOCOl, 
+				host=API_ALERT_LOCAL_HOST, 
+				port=API_ALERT_LOCAL_PORT
+			)
+
 
 	def test_delete(self):
 		with open(os.path.join(settings.BASE_DIR, 'apps/apis/test/test_case_delete_api.json'), 'r') as f:

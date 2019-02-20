@@ -22,9 +22,16 @@ class RegisterTestCase(TestCase):
 		self.content_type = 'application/json'
 
 		if not API_ALERT_LOCAL:
-			self.url = API_ALERT_LIST['register'].format(protocol=API_ALERT_PROTOCOL, host=API_ALERT_HOST)
+			self.url = API_ALERT_LIST['register'].format(
+				protocol=API_ALERT_PROTOCOL, 
+				host=API_ALERT_HOST
+			)
 		else:
-			self.url = API_ALERT_LIST['register'].format(protocol=API_ALERT_LOCAL_PROTOCOl, host=API_ALERT_LOCAL_HOST, port=API_ALERT_LOCAL_PORT)
+			self.url = API_ALERT_LOCAL_LIST['register'].format(
+				protocol=API_ALERT_LOCAL_PROTOCOl, 
+				host=API_ALERT_LOCAL_HOST, 
+				port=API_ALERT_LOCAL_PORT
+			)
 
 	def test_register(self):
 		
