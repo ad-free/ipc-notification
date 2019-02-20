@@ -1,21 +1,59 @@
+# This file is a template, and might need editing before it works on your project.
+# Official framework image. Look for the different tagged releases at:
+# https://hub.docker.com/r/library/python
 image: python:latest
 
 services:
   - mongo:latest
 
 variables:
-  MONGO_DATABASE: ipc_alert
+  MONGODB_URI: 'mongodb://mongo:27017/api_alert'
+# MONGO_INITDB_ROOT_USERNAME: root
+# MONGO_INITDB_ROOT_PASSWORD: example
+
+before_script:
+  - pip install -r req.txt
 
 stages:
-  - init
-  - build
+  - test_login_api
+  - test_update_api
+  - test_active_api
+  - test_delete_api
+  - deploy
 
-init:
-  stage: init
+first_test:
+  stage: test_login_api
   script:
-    - pip install -r req.txt
+    - python manage.py test --pattern='register.py'
+  only:
+    - branches
 
-build:
-  stage: build
+second_test:
+  stage: test_update_api
   script:
-    - echo 'Hello'
+    - python manage.py test --pattern='update.py'
+  only:
+    - branches
+
+third_test:
+  stage: test_active_api
+  script:
+    - python manage.py test --pattern='active.py'
+  only:
+    - branches
+
+fourth_test:
+  stage: test_delete_api
+  script:
+    - python manage.py test --pattern='delete.py'
+  only:
+    - branches
+
+finally:
+  stage: deploy
+  script:
+    - git checkout master
+    - git branch
+    - git merge dev/ic-300
+    - git commit -m 'Update a new source from dev/ic-300'
+    - git push origin master
