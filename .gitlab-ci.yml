@@ -37,13 +37,13 @@ second_test:
 third_test:
   stage: test_active_api
   script:
-    - echo 'Third test'
+    - python manage.py test --pattern='active.py'
   only:
     - branches
 
 fourth_test:
   stage: test_delete_api
   script:
-    - echo 'Fourth test'
+    - python manage.py test --pattern='delete.py'
   only:
     - branches

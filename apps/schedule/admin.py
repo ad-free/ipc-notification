@@ -10,9 +10,9 @@ from .forms import TimeForm
 @admin.register(Schedule)
 class ScheduleAdmin(admin.ModelAdmin):
 	form = TimeForm
-	fields = ('serial', 'date', 'start_time', 'end_time', 'repeat_at', 'user', 'repeat_status', 'is_active')
-	list_display = ('serial', 'schedule_id', 'date', 'start_time', 'end_time', 'repeat_status', 'is_active')
+	fields = ('serial', 'date', 'start_time', 'end_time', 'repeat_at', 'user', 'repeat_status',)
+	list_display = ('serial', 'schedule_id', 'date', 'start_time', 'end_time', 'repeat_status',)
 	filter_horizontal = ('user',)
 	search_fields = ('serial',)
-	list_filter = ('repeat_status', 'is_active',)
+	list_filter = ('repeat_status',)
 	ordering = ['serial']

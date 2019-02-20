@@ -172,22 +172,26 @@ def api_notification_active(request):
 			logger.error(logger_format('User does not exists.', api_notification_active.__name__))
 			errors.update({'message': _('User does not exists.')})
 		else:
-			if int(is_active) == 1:
-				for schedule in literal_eval(schedule_id):
-					try:
-						obj_schedule = Schedule.objects.get(serial=serial, schedule_id=schedule)
-						obj_schedule.user.add(user)
-					except Schedule.DoesNotExist:
-						logger.warning(logger_format('Schedule does not exists.', api_notification_active.__name__))
-				message = _('Activate notification successful.')
-			else:
-				for schedule in literal_eval(schedule_id):
-					try:
-						obj_schedule = Schedule.objects.get(serial=serial, schedule_id=schedule)
-						obj_schedule.user.remove(user)
-					except Schedule.DoesNotExist:
-						logger.warning(logger_format('Schedule does not exists.', api_notification_active.__name__))
-				message = _('In-activate notification successful.')
+			try:
+				if int(is_active) == 1:
+					for schedule in literal_eval(schedule_id):
+						try:
+							obj_schedule = Schedule.objects.get(serial=serial, schedule_id=schedule)
+							obj_schedule.user.add(user)
+						except Schedule.DoesNotExist:
+							logger.warning(logger_format('Schedule does not exists.', api_notification_active.__name__))
+					message = _('Activate notification successful.')
+				else:
+					for schedule in literal_eval(schedule_id):
+						try:
+							obj_schedule = Schedule.objects.get(serial=serial, schedule_id=schedule)
+							obj_schedule.user.remove(user)
+						except Schedule.DoesNotExist:
+							logger.warning(logger_format('Schedule does not exists.', api_notification_active.__name__))
+					message = _('In-activate notification successful.')
+			except Exception as e:
+				logger.warning(logger_format(e, api_notification_active.__name__))
+				message = _('Please check your parameters.')
 
 			logger.info(logger_format('<-------  END  ------->', api_notification_active.__name__))
 			return Response({

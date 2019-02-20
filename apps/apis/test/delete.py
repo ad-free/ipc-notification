@@ -7,7 +7,6 @@ from django.conf import settings
 
 from .config import *
 
-import requests
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
@@ -23,21 +22,19 @@ class DeleteTestCase(TestCase):
 
 		if not API_ALERT_LOCAL:
 			self.url = API_ALERT_LIST['delete'].format(
-				protocol=API_ALERT_PROTOCOL, 
-				host=API_ALERT_HOST
+					protocol=API_ALERT_PROTOCOL,
+					host=API_ALERT_HOST
 			)
 		else:
 			self.url = API_ALERT_LOCAL_LIST['delete'].format(
-				protocol=API_ALERT_LOCAL_PROTOCOl, 
-				host=API_ALERT_LOCAL_HOST, 
-				port=API_ALERT_LOCAL_PORT
+					protocol=API_ALERT_LOCAL_PROTOCOl,
+					host=API_ALERT_LOCAL_HOST,
+					port=API_ALERT_LOCAL_PORT
 			)
 
-
 	def test_delete(self):
-		with open(os.path.join(settings.BASE_DIR, 'apps/apis/test/test_case_delete_api.json'), 'r') as f:
+		with open(os.path.join(settings.BASE_DIR, 'apps/apis/test/test_case/test_case_api_delete.json'), 'r') as f:
 			cases = json.loads(f.read())
-
 			for case in cases['data']:
 				request = Request(url=self.url, data=urlencode(case).encode(), headers={'gis': self.gis})
 				data = urlopen(request).read().decode('utf-8')
@@ -49,4 +46,4 @@ class DeleteTestCase(TestCase):
 					self.assertIs(data['status'], status.HTTP_200_OK, 'Completed.')
 				else:
 					print('[X] %s' % case)
-					self.assertNotEqual(data['status'], status.HTTP_400_BAD_REQUEST, data['errors']['message'])
+					self.assertNotEqual(data['status'], status.HTTP_400_BAD_REQUEST, data['errors'])
