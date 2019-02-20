@@ -31,7 +31,7 @@ class AnimalTestCase(TestCase):
 			{
 				"username": "8497623707",
 				"password": "f66edb256eea99",
-				"platform": "fcm",
+				"platform": "fcmaaa",
 				"device_token": "fcc530639f6e362c5277b7209b708fa004e9",
 				"bundle": "fcc530639f6e362c5277b7209b708fa004e9"
 			}
