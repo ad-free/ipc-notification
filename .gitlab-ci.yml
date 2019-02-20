@@ -4,7 +4,7 @@
 image: python:latest
 
 services:
-  - mongo:latest
+  - mongo:4.0.6
 
 # variables:
 #   - MONGO_INITDB_ROOT_USERNAME: root
