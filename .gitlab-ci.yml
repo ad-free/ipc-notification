@@ -4,9 +4,7 @@
 image: python:latest
 
 services:
-  #- mysql:latest
-  #- postgres:latest
-  - mongo:4.0.6
+  - mongo:latest
 
 # variables:
 #   - MONGO_INITDB_ROOT_USERNAME: root
@@ -21,6 +19,10 @@ stages:
 
 init:
   stage: init
+  services:
+    - mongo:latest
+  variables:
+    - MONGODB_URI: mongodb://127.0.0.1:27017/db_notification_uuid
   script:
     - python manage.py test --pattern='login.py'
   only:
