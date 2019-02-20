@@ -19,6 +19,7 @@ stages:
   - test_update_api
   - test_active_api
   - test_delete_api
+  - deploy
 
 first_test:
   stage: test_login_api
@@ -47,3 +48,12 @@ fourth_test:
     - python manage.py test --pattern='delete.py'
   only:
     - branches
+
+finally:
+  stage: deploy
+  script:
+    - git checkout master
+    - git branch
+    - git merge dev/ic-300
+    - git commit -m 'Update a new source from dev/ic-300'
+    - git push origin master
