@@ -11,9 +11,6 @@ variables:
 # MONGO_INITDB_ROOT_USERNAME: root
 # MONGO_INITDB_ROOT_PASSWORD: example
 
-before_script:
-  - pip install -r req.txt
-
 stages:
   - build
   - test
@@ -25,43 +22,22 @@ build:
   script:
     - echo 'Build'
 
-first_test:
+test:
   stage: test
+  before_script:
+    - apt-get update -qy
+    - pip install -r req.txt
   script:
     - python manage.py test --pattern='register.py'
-  only:
-    - master
-    - merge_requests
-
-second_test:
-  stage: test
-  script:
     - python manage.py test --pattern='update.py'
-  only:
-    - master
-    - merge_requests
-
-third_test:
-  stage: test
-  script:
     - python manage.py test --pattern='active.py'
-  only:
-    - master
-    - merge_requests
-
-fourth_test:
-  stage: test
-  script:
     - python manage.py test --pattern='delete.py'
   only:
-    - master
     - merge_requests
 
-finally:
+staging:
   stage: deploy
   script:
-    - git branch
-    - echo 'Finally'
+    - apt-get update -qy
   only:
     - master
-    - merge_requests
