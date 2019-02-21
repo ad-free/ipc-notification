@@ -9,7 +9,7 @@
 	},
 	{
 	  "username": "84976237026",
-	  "new_username": "84999999999",
+	  "new_username": "",
 	  "serial": "AAAAAAAA18",
 	  "schedule": "[{u'begin_at': '00:00', u'is_active': 1, u'repeat_at': u'2018-12-15', u'end_at': '18:00', u'schedule_id': 'a94393fc-0383-3daf-b391-025df9463718', u'repeat_status': 0}]",
 	  "is_unshared": 1
