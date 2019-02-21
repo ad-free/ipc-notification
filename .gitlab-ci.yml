@@ -15,41 +15,49 @@ before_script:
   - pip install -r req.txt
 
 stages:
-  - test_login_api
-  - test_update_api
-  - test_active_api
-  - test_delete_api
+  - build
+  - test
   - deploy
 
+build:
+  stage: build
+  script:
+    - echo 'Build'
+
 first_test:
-  stage: test_login_api
+  stage: test
   script:
     - python manage.py test --pattern='register.py'
   only:
     - branches
+  except:
     - merge_requests
 
 second_test:
-  stage: test_update_api
+  stage: test
   script:
     - python manage.py test --pattern='update.py'
   only:
     - branches
+  except:
     - merge_requests
 
 third_test:
-  stage: test_active_api
+  stage: test
   script:
     - python manage.py test --pattern='active.py'
   only:
     - branches
+  except:
     - merge_requests
 
 fourth_test:
-  stage: test_delete_api
+  stage: test
   script:
     - python manage.py test --pattern='delete.py'
   only:
+    - branches
+  except:
     - merge_requests
 
 finally_test:
@@ -57,3 +65,7 @@ finally_test:
   script:
     - git branch
     - echo 'Finally'
+  only:
+    - branches
+  except:
+    - merge_requests
