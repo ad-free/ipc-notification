@@ -26,34 +26,30 @@ first_test:
   script:
     - python manage.py test --pattern='register.py'
   only:
-    - branches
+    - master
 
 second_test:
   stage: test_update_api
   script:
     - python manage.py test --pattern='update.py'
-  only:
-    - branches
+    - master
 
 third_test:
   stage: test_active_api
   script:
     - python manage.py test --pattern='active.py'
-  only:
-    - branches
+    - master
 
 fourth_test:
   stage: test_delete_api
   script:
     - python manage.py test --pattern='delete.py'
-  only:
-    - branches
-
-finally:
-  stage: deploy
-  script:
-    - git checkout master
-    - git branch
-    - git merge dev/ic-300
-    - git commit -m 'Update a new source from dev/ic-300'
-    - git push origin master
+    - master
+#
+#finally:
+#  stage: deploy
+#  script:
+#    - git branch
+#    - git merge dev/ic-300
+#    - git commit -m 'Update a new source from dev/ic-300'
+#    - git push
