@@ -48,11 +48,6 @@ finally:
     - git branch
     - echo 'Finally'
   only:
+    - merge_requests
+  except:
     - master
-    - pushes
-
-cleanup_job:
-  stage: cleanup
-  script:
-    - cleanup after jobs
-  when: always
