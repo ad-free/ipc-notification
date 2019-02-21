@@ -26,6 +26,7 @@ test:
   stage: test
   before_script:
     - apt-get update -qy
+    - apt-get install -y python-dev python-pip
     - pip install -r req.txt
   script:
     - python manage.py test --pattern='register.py'
