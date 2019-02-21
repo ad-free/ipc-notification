@@ -30,7 +30,7 @@ first_test:
   script:
     - python manage.py test --pattern='register.py'
   only:
-    - branches
+    - master
     - merge_requests
 
 second_test:
@@ -38,7 +38,7 @@ second_test:
   script:
     - python manage.py test --pattern='update.py'
   only:
-    - branches
+    - master
     - merge_requests
 
 third_test:
@@ -46,7 +46,7 @@ third_test:
   script:
     - python manage.py test --pattern='active.py'
   only:
-    - branches
+    - master
     - merge_requests
 
 fourth_test:
@@ -54,7 +54,7 @@ fourth_test:
   script:
     - python manage.py test --pattern='delete.py'
   only:
-    - branches
+    - master
     - merge_requests
 
 finally:
@@ -63,5 +63,5 @@ finally:
     - git branch
     - echo 'Finally'
   only:
-    - branches
+    - master
     - merge_requests
