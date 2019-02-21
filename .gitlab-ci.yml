@@ -48,6 +48,6 @@ finally:
     - git branch
     - echo 'Finally'
   only:
-    - merge_requests
+    - branches
   except:
     - master
