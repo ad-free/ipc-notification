@@ -20,32 +20,40 @@ stages:
   - test_active_api
   - test_delete_api
   - deploy
-  - cleanup
 
 first_test:
   stage: test_login_api
   script:
     - python manage.py test --pattern='register.py'
+  only:
+    - branches
+    - merge_requests
 
 second_test:
   stage: test_update_api
   script:
     - python manage.py test --pattern='update.py'
+  only:
+    - branches
+    - merge_requests
 
 third_test:
   stage: test_active_api
   script:
     - python manage.py test --pattern='active.py'
+  only:
+    - branches
+    - merge_requests
 
 fourth_test:
   stage: test_delete_api
   script:
     - python manage.py test --pattern='delete.py'
+  only:
+    - merge_requests
 
-finally:
+finally_test:
   stage: deploy
   script:
     - git branch
     - echo 'Finally'
-  only:
-    - merge-requests
