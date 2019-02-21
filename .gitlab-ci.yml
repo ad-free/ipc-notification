@@ -32,8 +32,6 @@ test:
     - python manage.py test --pattern='update.py'
     - python manage.py test --pattern='active.py'
     - python manage.py test --pattern='delete.py'
-  only:
-    - merge_requests
 
 staging:
   stage: deploy
