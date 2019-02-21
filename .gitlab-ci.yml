@@ -28,6 +28,9 @@ first_test:
   stage: test
   script:
     - python manage.py test --pattern='register.py'
+  environment:
+    name: test
+    url: https://test.example.com
   only:
     - branches
     - merge_requests
@@ -36,6 +39,9 @@ second_test:
   stage: test
   script:
     - python manage.py test --pattern='update.py'
+  environment:
+    name: test
+    url: https://test.example.com
   only:
     - branches
     - merge_requests
@@ -44,6 +50,9 @@ third_test:
   stage: test
   script:
     - python manage.py test --pattern='active.py'
+  environment:
+    name: test
+    url: https://test.example.com
   only:
     - branches
     - merge_requests
@@ -52,6 +61,9 @@ fourth_test:
   stage: test
   script:
     - python manage.py test --pattern='delete.py'
+  environment:
+    name: test
+    url: https://test.example.com
   only:
     - branches
     - merge_requests
