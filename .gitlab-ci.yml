@@ -30,7 +30,6 @@ first_test:
     - python manage.py test --pattern='register.py'
   only:
     - branches
-  except:
     - merge_requests
 
 second_test:
@@ -39,7 +38,6 @@ second_test:
     - python manage.py test --pattern='update.py'
   only:
     - branches
-  except:
     - merge_requests
 
 third_test:
@@ -48,7 +46,6 @@ third_test:
     - python manage.py test --pattern='active.py'
   only:
     - branches
-  except:
     - merge_requests
 
 fourth_test:
@@ -57,15 +54,16 @@ fourth_test:
     - python manage.py test --pattern='delete.py'
   only:
     - branches
-  except:
     - merge_requests
 
-finally_test:
+finally:
   stage: deploy
   script:
     - git branch
     - echo 'Finally'
+  environment:
+    name: deploy
+    url: https://deploy.example.com
   only:
     - branches
-  except:
     - merge_requests
