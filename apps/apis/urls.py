@@ -6,4 +6,5 @@ urlpatterns = [
 	path('notification/update/', views.api_notification_update, name='api_notification_update'),
 	path('notification/delete/', views.api_notification_delete, name='api_notification_delete'),
 	path('notification/active/', views.api_notification_active, name='api_notification_active'),
+	path('notification/send/', views.api_notification_send, name='api_notification_send'),
 ]

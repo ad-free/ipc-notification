@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+from django.conf import settings
 from django.utils.translation import ugettext_lazy as _
+
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
@@ -10,13 +12,19 @@ from ..users.models import Customer
 from ..schedule.models import Schedule
 from ..notifications.models import GCM, APNS
 
-from ..apis.utils import APIAccessPermission, update_or_create_device
+from ..apis.utils import APIAccessPermission, update_or_create_device, message_format, single_subscribe_or_publish
 from ..commons.utils import logger_format
 
 from functools import partial
 from ast import literal_eval
+import paho.mqtt.subscribe as subscribe
+import paho.mqtt.publish as publish
 
 import logging
+import ssl
+import uuid
+import json
+import time
 
 logger = logging.getLogger('')
 
@@ -244,6 +252,105 @@ def api_notification_delete(request):
 		}, status=status.HTTP_200_OK)
 
 	logger.info(logger_format('<-------  END  ------->', api_notification_delete.__name__))
+	return Response({
+		'status': status.HTTP_400_BAD_REQUEST,
+		'result': False,
+		'errors': errors
+	}, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes((partial(APIAccessPermission, 'api_notification_send'),))
+def api_notification_send(request):
+	logger.info(logger_format('<-------  START  ------->', api_notification_send.__name__))
+	errors = {}
+	phone_number = request.POST.get('phone_number', '').strip()
+	title = request.POST.get('title', '')
+	message = request.POST.get('message', '')
+
+	if not phone_number:
+		errors.update({'message': _('This field is required.')})
+	if not title:
+		errors.update({'message': _('This field is required.')})
+	if not message:
+		errors.update({'message': _('This field is required.')})
+
+	if not errors:
+		try:
+			user = Customer.objects.get(username=phone_number)
+		except Customer.DoesNotExist:
+			logger.info(logger_format('User does not exists.', api_notification_send.__name__))
+			errors.update({'message': _('User does not exists.')})
+		else:
+			topic = settings.USER_TOPIC_STATUS.format(name=phone_number)
+			msg = single_subscribe_or_publish(topic=topic, is_subscribe=True)
+			data = json.loads(msg.payload)
+
+			if 'status' in data:
+				apns_list = APNS.objects.distinct().filter(user=user)
+				gcm_list = GCM.objects.distinct().filter(user=user)
+				message = message_format(
+						title=u'{}'.format(title),
+						body=u'{}'.format(message),
+						url=u'{}'.format('www.prod-alert.iotc.vn'),
+						acm_id='',
+						time=int(time.time()),
+						serial=''
+				)
+				if data['status'] == 'online':
+					if apns_list.exists():
+						device_message = json.dumps({
+							'aps': {
+								'alert': message,
+								'sound': 'default',
+								'content-available': 1
+							}
+						})
+						single_subscribe_or_publish(
+								topic=settings.USER_TOPIC_ANNOUNCE.format(name=phone_number),
+								payload=device_message,
+								is_publish=True
+						)
+					if gcm_list.exists():
+						device_message = json.dumps({
+							'data': message,
+							'sound': 'default',
+							'content-available': 1
+						})
+						single_subscribe_or_publish(
+								topic=settings.USER_TOPIC_ANNOUNCE.format(name=phone_number),
+								payload=device_message,
+								is_publish=True
+						)
+				else:
+					if apns_list.exists():
+						for obj_apns in apns_list:
+							try:
+								obj_apns.send_message(message=message, sound='default', content_available=1)
+							except Exception as e:
+								logger.error(logger_format(u'{}-{}'.format(obj_apns.registration_id, e), api_notification_send.__name__))
+								if 'Unregistered' in str(e):
+									obj_apns.delete()
+								pass
+					if gcm_list.exists():
+						for obj_gcm in gcm_list:
+							try:
+								obj_gcm.send_message(None, extra=message, use_fcm_notifications=False)
+							except Exception as e:
+								logger.error(logger_format(u'{}-{}'.format(obj_gcm.registration_id, e), api_notification_send.__name__))
+								if 'Unregistered' in str(e):
+									obj_gcm.delete()
+								pass
+				logger.info(logger_format('<-------  END  ------->', api_notification_send.__name__))
+				return Response({
+					'status': status.HTTP_200_OK,
+					'result': True,
+					'message': _('Send notifications to users successfully.')
+				}, status=status.HTTP_200_OK)
+			else:
+				errors.update({'message': _('The user\'s status cannot be determined.')})
+
+	logger.info(logger_format('<-------  END  ------->', api_notification_send.__name__))
 	return Response({
 		'status': status.HTTP_400_BAD_REQUEST,
 		'result': False,

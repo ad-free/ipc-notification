@@ -1,17 +1,25 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+from django.conf import settings
 from django.contrib.auth.hashers import make_password
 from django.utils.dateformat import format
 from django.utils.translation import ugettext_lazy as _
+
 from rest_framework import permissions
 
 from .models import Registration
 from ..users.models import Customer
 from push_notifications.models import CLOUD_MESSAGE_TYPES
 
+
 from datetime import datetime, timedelta
 
+import paho.mqtt.subscribe as subscribe
+import paho.mqtt.publish as publish
+import ssl
+import json
+import uuid
 import logging
 
 logger = logging.getLogger('')
@@ -46,6 +54,45 @@ def message_format(title='', body='', url='', acm_id='', time='', serial=''):
 		'time': time,
 		'camera_serial': serial
 	}
+
+
+def single_subscribe_or_publish(topic, payload=None, qos=0, is_publish=False, is_subscribe=False):
+	auth = {
+		'username': settings.API_ALERT_USERNAME,
+		'password': settings.API_ALERT_PASSWORD
+	}
+	tls = {
+		'ca_certs': settings.CA_ROOT_CERT_FILE,
+		'certfile': settings.CA_ROOT_CERT_CLIENT,
+		'keyfile': settings.CA_ROOT_CERT_KEY,
+		'cert_reqs': ssl.CERT_NONE,
+		'tls_version': settings.CA_ROOT_TLS_VERSION,
+		'ciphers': settings.CA_ROOT_CERT_CIPHERS
+	}
+	if is_publish:
+		publish.single(
+				topic=topic,
+				payload=payload,
+				qos=qos,
+				retain=True,
+				hostname=settings.API_QUEUE_HOST,
+				port=settings.API_QUEUE_PORT,
+				client_id='iot-{}'.format(uuid.uuid1().hex),
+				auth=auth,
+				tls=tls
+		)
+		return True
+	if is_subscribe:
+		message = subscribe.simple(
+				topics=topic,
+				hostname=settings.API_QUEUE_HOST,
+				port=settings.API_QUEUE_PORT,
+				client_id='iot-{}'.format(uuid.uuid1().hex),
+				auth=auth,
+				tls=tls
+		)
+		return message
+	return False
 
 
 def app_registration(app_id):
