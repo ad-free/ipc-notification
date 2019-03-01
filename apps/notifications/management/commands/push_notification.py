@@ -2,6 +2,7 @@
 from __future__ import absolute_import
 
 from django.conf import settings
+from django.db import connection
 from django.core.management.base import BaseCommand
 from django.utils.translation import ugettext_lazy as _
 
@@ -158,3 +159,4 @@ class Command(BaseCommand):
 				self.stdout.write('Sent a notification to user.')
 		except KeyError as e:
 			logger.error(logger_format(u'{}-{}'.format(user.username, e), self.push_notification.__name__))
+		connection.close()
