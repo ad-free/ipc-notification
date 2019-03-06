@@ -58,50 +58,56 @@ class Command(BaseCommand):
 			self.stdout.write('Connection failed.')
 
 	def on_message(self, client, userdata, message):
-		data = json.loads(message.payload)
-		serial = message.topic.split('/')[1]
+		try:
+			data = json.loads(message.payload)
+			serial = message.topic.split('/')[1]
+			if message.topic.startswith('user'):
+				username = message.topic.split('/')[1]
+				self.status.update({username: data['status']})
+		except Exception as e:
+			logger.error(logger_format(e, self.on_message.__name__))
+			data = {}
+			serial = ''
 
-		if message.topic.startswith('user'):
-			username = message.topic.split('/')[1]
-			self.status.update({username: data['status']})
-
-		if message.topic.startswith('ipc') and message.topic.endswith('alarm'):
-			obj_schedule = Schedule.objects.filter(serial=serial)
-			if obj_schedule.exists():
-				for schedule in obj_schedule:
-					if schedule.repeat_status:
-						if datetime.now().weekday() in json.loads(schedule.repeat_at):
-							now = timedelta(hours=datetime.now().hour, minutes=datetime.now().minute)
-							if (timedelta(hours=schedule.start_time.hour, minutes=schedule.start_time.minute) <= now) and (
-									now <= timedelta(hours=schedule.end_time.hour, minutes=schedule.end_time.minute)):
+		if 'Status' in data:
+			if data['Status'] == 'Start':
+				obj_schedule = Schedule.objects.filter(serial=serial)
+				if obj_schedule.exists():
+					for schedule in obj_schedule:
+						if schedule.repeat_status:
+							if datetime.now().weekday() in json.loads(schedule.repeat_at):
+								now = timedelta(hours=datetime.now().hour, minutes=datetime.now().minute)
+								if (timedelta(hours=schedule.start_time.hour, minutes=schedule.start_time.minute) <= now) and (
+										now <= timedelta(hours=schedule.end_time.hour, minutes=schedule.end_time.minute)):
+									for user in schedule.user.all():
+										self.multiple_threading(self.push_notification, self.create_topic, client, user, serial, data)
+									break
+						else:
+							start_time = datetime.strptime('{date} {hour}:{minutes}'.format(
+									date=schedule.date,
+									hour=schedule.start_time.hour,
+									minutes=schedule.start_time.minute
+							), settings.DATE_TIME_FORMAT)
+							end_time = datetime.strptime('{date} {hour}:{minutes}'.format(
+									date=schedule.date,
+									hour=schedule.end_time.hour,
+									minutes=schedule.end_time.minute
+							), settings.DATE_TIME_FORMAT)
+							if (start_time <= datetime.now()) and (datetime.now() <= end_time):
 								for user in schedule.user.all():
-									self.multiple_threading(self.push_notification, self.create_topic, client, user, serial)
+									self.multiple_threading(self.push_notification, self.create_topic, client, user, serial, data)
 								break
-					else:
-						start_time = datetime.strptime('{date} {hour}:{minutes}'.format(
-							date=schedule.date,
-							hour=schedule.start_time.hour,
-							minutes=schedule.start_time.minute
-						), settings.DATE_TIME_FORMAT)
-						end_time = datetime.strptime('{date} {hour}:{minutes}'.format(
-							date=schedule.date,
-							hour=schedule.end_time.hour,
-							minutes=schedule.end_time.minute
-						), settings.DATE_TIME_FORMAT)
-						if (start_time <= datetime.now()) and (datetime.now() <= end_time):
-							for user in schedule.user.all():
-								self.multiple_threading(self.push_notification, self.create_topic, client, user, serial)
-							break
 
-	def multiple_threading(self, push_notification, create_topic, client, user, serial):
+	def multiple_threading(self, push_notification, create_topic, client, user, serial, data):
+		logger.error(logger_format(u'{}-{}-{}'.format(data['Address'], data['SerialID'], data['Event']), data['Type']))
 		self.stdout.write('Start multiple threading.')
 		message = message_format(
-			title=u'{}'.format('Thông báo'),
-			body=u'Chúc mừng năm mới {number}.'.format(number=2019),
-			url=u'{}'.format('www.alert.iotc.vn'),
-			acm_id=uuid.uuid1().hex,
-			time=int(time.time()),
-			serial=serial
+				title=u'{}'.format(data['Event']),
+				body=data['Descrip'] if data['Descrip'] else u'{}'.format('Phát hiện chuyển động.'),
+				url=u'{}'.format('www.prod-alert.iotc.vn'),
+				acm_id=uuid.uuid1().hex,
+				time=int(time.time()),
+				serial=serial
 		)
 		t1 = Thread(target=push_notification, args=(client, user, message))
 		t2 = Thread(target=create_topic, args=(client, user, message))

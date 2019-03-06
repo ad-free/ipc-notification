@@ -81,9 +81,9 @@ WSGI_APPLICATION = 'apiAlert.wsgi.application'
 DATABASES = {
 	'default': {
 		'ENGINE': 'apps.mongolink',
-		'NAME': 'db_alert',
-		'HOST': 'mongo',
-		'PORT': 27017
+		'NAME': os.environ.get('DATABASE_NAME', ''),
+		'HOST': os.environ.get('DATABASE_HOST', ''),
+		'PORT': os.environ.get('DATABASE_PORT', ''),
 	}
 }
 
