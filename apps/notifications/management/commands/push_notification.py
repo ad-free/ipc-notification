@@ -69,8 +69,9 @@ class Command(BaseCommand):
 			data = {}
 			serial = ''
 
-		if 'Status' in data:
-			if data['Status'] == 'Start':
+		if 'Status' in data and 'Type' in data:
+			logger.error(logger_format(u'{}-{}-{}-{}'.format(data['StartTime'], data['Address'], data['SerialID'], data['Event']), data['Type']))
+			if data['Status'] == 'Start' and data['Type'] == 'Alarm':
 				obj_schedule = Schedule.objects.filter(serial=serial)
 				if obj_schedule.exists():
 					for schedule in obj_schedule:
@@ -99,7 +100,6 @@ class Command(BaseCommand):
 								break
 
 	def multiple_threading(self, push_notification, create_topic, client, user, serial, data):
-		logger.error(logger_format(u'{}-{}-{}'.format(data['Address'], data['SerialID'], data['Event']), data['Type']))
 		self.stdout.write('Start multiple threading.')
 		message = message_format(
 				title=u'{}'.format(data['Event']),
