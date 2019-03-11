@@ -45,14 +45,16 @@ def update_or_create_device(device, name, token, username, password, android=Fal
 	return {'success': False, 'message': _('Device token always exists.')}
 
 
-def message_format(title='', body='', url='', acm_id='', time='', serial=''):
+def message_format(title='', body='', url='', acm_id='', time='', serial='', letter_type='', attachment=''):
 	return {
 		'title': title,
 		'body': body,
 		'url': url,
 		'acm_id': acm_id,
 		'time': time,
-		'camera_serial': serial
+		'camera_serial': serial,
+		'letter_type': letter_type,
+		'attachment': attachment
 	}
 
 

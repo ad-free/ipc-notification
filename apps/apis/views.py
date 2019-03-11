@@ -17,12 +17,9 @@ from ..commons.utils import logger_format
 
 from functools import partial
 from ast import literal_eval
-import paho.mqtt.subscribe as subscribe
-import paho.mqtt.publish as publish
+from threading import Thread
 
 import logging
-import ssl
-import uuid
 import json
 import time
 
@@ -265,8 +262,10 @@ def api_notification_send(request):
 	logger.info(logger_format('<-------  START  ------->', api_notification_send.__name__))
 	errors = {}
 	phone_number = request.POST.get('phone_number', '').strip()
-	title = request.POST.get('title', '')
-	message = request.POST.get('message', '')
+	title = request.POST.get('title', '').strip()
+	message = request.POST.get('message', '').strip()
+	letter_type = request.POST.get('letter_type', '').strip()
+	attachment = request.POST.get('attachment', '').strip()
 
 	if not phone_number:
 		errors.update({'message': _('This field is required.')})
@@ -285,7 +284,6 @@ def api_notification_send(request):
 			topic = settings.USER_TOPIC_STATUS.format(name=phone_number)
 			msg = single_subscribe_or_publish(topic=topic, is_subscribe=True)
 			data = json.loads(msg.payload)
-
 			if 'status' in data:
 				apns_list = APNS.objects.distinct().filter(user=user)
 				gcm_list = GCM.objects.distinct().filter(user=user)
@@ -295,7 +293,14 @@ def api_notification_send(request):
 						url=u'{}'.format('www.prod-alert.iotc.vn'),
 						acm_id='',
 						time=int(time.time()),
-						serial=''
+						serial='',
+						letter_type=letter_type,
+						attachment=attachment
+				)
+				single_subscribe_or_publish(
+						topic=settings.USER_TOPIC_ANNOUNCE.format(name=phone_number),
+						payload=json.dumps(message),
+						is_publish=True
 				)
 				if data['status'] == 'online':
 					if apns_list.exists():
