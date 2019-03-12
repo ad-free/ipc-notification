@@ -17,11 +17,11 @@ from ..commons.utils import logger_format
 
 from functools import partial
 from ast import literal_eval
-from threading import Thread
 
 import logging
 import json
 import time
+import uuid
 
 logger = logging.getLogger('')
 
@@ -268,9 +268,9 @@ def api_notification_send(request):
 	attachment = request.POST.get('attachment', '').strip()
 
 	if not phone_number:
-		errors.update({'message': _('This field is required.')})
+		errors.update({'phone_number': _('This field is required.')})
 	if not title:
-		errors.update({'message': _('This field is required.')})
+		errors.update({'title': _('This field is required.')})
 	if not message:
 		errors.update({'message': _('This field is required.')})
 
@@ -291,7 +291,7 @@ def api_notification_send(request):
 						title=u'{}'.format(title),
 						body=u'{}'.format(message),
 						url=u'{}'.format('www.prod-alert.iotc.vn'),
-						acm_id='',
+						acm_id=uuid.uuid1().hex,
 						time=int(time.time()),
 						serial='',
 						letter_type=letter_type,
