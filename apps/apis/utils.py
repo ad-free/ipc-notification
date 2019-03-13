@@ -45,16 +45,19 @@ def update_or_create_device(device, name, token, username, password, android=Fal
 	return {'success': False, 'message': _('Device token always exists.')}
 
 
-def message_format(title='', body='', url='', acm_id='', time='', serial='', letter_type='', attachment=''):
+def message_format(**kwargs):
 	return {
-		'title': title,
-		'body': body,
-		'url': url,
-		'acm_id': acm_id,
-		'time': time,
-		'camera_serial': serial,
-		'letter_type': letter_type,
-		'attachment': attachment
+		'title': kwargs['title'],
+		'body': kwargs['body'],
+		'url': kwargs['url'],
+		'acm_id': kwargs['acm_id'],
+		'time': kwargs['time'],
+		'camera_serial': kwargs['serial'],
+		'letter_type': kwargs['letter_type'],
+		'attachment': kwargs['attachment'],
+		'notification_title': kwargs['notification_title'],
+		'notification_body': kwargs['notification_body'],
+		'notification_type': kwargs['notification_type']
 	}
 
 

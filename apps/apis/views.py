@@ -12,11 +12,13 @@ from ..users.models import Customer
 from ..schedule.models import Schedule
 from ..notifications.models import GCM, APNS
 
+from .serializers import LETTER_TYPE, NOTIFICATION_TYPE
 from ..apis.utils import APIAccessPermission, update_or_create_device, message_format, single_subscribe_or_publish
 from ..commons.utils import logger_format
 
 from functools import partial
 from ast import literal_eval
+from itertools import chain
 
 import logging
 import json
@@ -266,6 +268,9 @@ def api_notification_send(request):
 	message = request.POST.get('message', '').strip()
 	letter_type = request.POST.get('letter_type', '').strip()
 	attachment = request.POST.get('attachment', '').strip()
+	notification_title = request.POST.get('notification_title,', '').strip()
+	notification_body = request.POST.get('notification_body', '').strip()
+	notification_type = request.POST.get('notification_type', '').strip()
 
 	if not phone_number:
 		errors.update({'phone_number': _('This field is required.')})
@@ -273,6 +278,10 @@ def api_notification_send(request):
 		errors.update({'title': _('This field is required.')})
 	if not message:
 		errors.update({'message': _('This field is required.')})
+	if letter_type not in chain(*LETTER_TYPE):
+		errors.update({'letter_type': _('Incorrect formatting.')})
+	if notification_type not in chain(*NOTIFICATION_TYPE):
+		errors.update({'notification_type': _('Incorrect formatting.')})
 
 	if not errors:
 		try:
@@ -295,7 +304,10 @@ def api_notification_send(request):
 						time=int(time.time()),
 						serial='',
 						letter_type=letter_type,
-						attachment=attachment
+						attachment=attachment,
+						notification_title=notification_title,
+						notification_body=notification_body,
+						notification_type=notification_type
 				)
 				single_subscribe_or_publish(
 						topic=settings.USER_TOPIC_ANNOUNCE.format(name=phone_number),
