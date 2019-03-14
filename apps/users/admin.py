@@ -51,7 +51,7 @@ class CustomerAdmin(UserAdmin):
 @admin.register(Staff)
 class StaffAdmin(UserAdmin):
 	fieldsets = (
-		(None, {'fields': ('username', 'phone_number', 'password')}),
+		(None, {'fields': ('username', 'password')}),
 		(_('Personal info'), {'fields': ('first_name', 'last_name', 'email')}),
 		(_('Permissions'), {'fields': ('is_active', 'is_superuser', 'groups')}),
 	)
