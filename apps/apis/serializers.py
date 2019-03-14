@@ -43,11 +43,11 @@ class RegisterSerializer(serializers.Serializer):
 
 		errors = {}
 		result = {'success': '', 'message': ''}
-		username = validated_data.get('username', None)
-		password = validated_data.get('password', None)
-		platform = validated_data.get('platform', None)
-		device_token = validated_data.get('device_token', None)
-		bundle = validated_data.get('bundle', None)
+		username = validated_data.get('username', '')
+		password = validated_data.get('password', '')
+		platform = validated_data.get('platform', '')
+		device_token = validated_data.get('device_token', '')
+		bundle = validated_data.get('bundle', '')
 		name = platform + '_' + bundle
 
 		if platform == 'apns':
@@ -78,24 +78,24 @@ class UpdateSerializer(serializers.Serializer):
 	username = serializers.CharField(max_length=32, required=True)
 	new_username = serializers.CharField(max_length=32, required=False, allow_blank=True, allow_null=True)
 	serial = serializers.CharField(max_length=32, required=False)
-	schedule_list = serializers.CharField(max_length=255, required=False)
+	schedule = serializers.CharField(max_length=255, required=False)
 	is_unshared = serializers.CharField(max_length=50, required=False)
 
 	def create(self, validated_data):
 		""" Update schedule """
 
 		errors = {}
-		username = validated_data.get('username', None)
-		new_username = validated_data.get('new_username', None)
-		serial = validated_data.get('serial', None)
-		schedule_list = validated_data.get('schedule_list', None)
-		is_unshared = validated_data.get('is_unshared', None)
+		username = validated_data.get('username', '')
+		new_username = validated_data.get('new_username', '')
+		serial = validated_data.get('serial', '')
+		schedule_list = validated_data.get('schedule', '')
+		is_unshared = validated_data.get('is_unshared', '')
 
 		if not new_username:
 			if not serial:
 				errors.update({'serial': 'This field is required.'})
 			if not schedule_list:
-				errors.update({'schedule_list': 'This field is required.'})
+				errors.update({'schedule': 'This field is required.'})
 			if not is_unshared:
 				errors.update({'is_unshared': 'This field is required.'})
 
@@ -162,7 +162,7 @@ class UpdateSerializer(serializers.Serializer):
 class DeleteSerializer(serializers.Serializer):
 	id = serializers.UUIDField(read_only=True, default=uuid.uuid1)
 	serial = serializers.CharField(max_length=32, required=True)
-	schedule_list = serializers.CharField(max_length=255, required=True)
+	schedule_id = serializers.CharField(max_length=255, required=True)
 	is_delete = serializers.IntegerField(default=0)
 
 	def create(self, validated_data):
@@ -170,9 +170,9 @@ class DeleteSerializer(serializers.Serializer):
 
 		errors = {}
 		message = {}
-		serial = validated_data.get('serial', None)
-		schedule_list = validated_data.get('schedule_list', None)
-		is_delete = validated_data.get('is_delete', None)
+		serial = validated_data.get('serial', '')
+		schedule_list = validated_data.get('schedule_id', '')
+		is_delete = validated_data.get('is_delete', '')
 
 		if is_delete == 1:
 			Schedule.objects.filter(serial=serial)
@@ -206,10 +206,10 @@ class ActiveSerializer(serializers.Serializer):
 		""" Active schedule """
 
 		errors = {}
-		username = validated_data.get('username', None)
-		serial = validated_data.get('serial', None)
-		schedule_id = validated_data.get('schedule_id', None)
-		is_active = validated_data.get('is_active', None)
+		username = validated_data.get('username', '')
+		serial = validated_data.get('serial', '')
+		schedule_id = validated_data.get('schedule_id', '')
+		is_active = validated_data.get('is_active', '')
 
 		try:
 			user = Customer.objects.get(username=username)
