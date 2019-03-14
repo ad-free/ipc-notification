@@ -287,7 +287,7 @@ class SendSerializer(serializers.Serializer):
 						url=u'{}'.format('www.prod-alert.iotc.vn'),
 						acm_id=uuid.uuid1().hex,
 						time=int(time.time()),
-						serial='',
+						camera_serial='',
 						letter_type=letter_type,
 						attachment=attachment,
 						notification_title=notification_title,

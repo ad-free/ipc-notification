@@ -10,6 +10,7 @@ from apps.commons.utils import logger_format
 from apps.schedule.models import Schedule
 from apps.notifications.models import GCM, APNS
 
+from apps.apis.serializers import LETTER_TYPE, NOTIFICATION_TYPE
 from apps.apis.utils import message_format
 from datetime import datetime, timedelta
 from threading import Thread
@@ -20,6 +21,7 @@ import json
 import time
 import logging
 import ssl
+import random
 
 logger = logging.getLogger('')
 
@@ -68,7 +70,7 @@ class Command(BaseCommand):
 			logger.error(logger_format(e, self.on_message.__name__))
 			data = {}
 			serial = ''
-
+		print(data)
 		if {'Status', 'Type'} <= data.keys():
 			logger.info(logger_format(u'{}-{}-{}-{}'.format(data['StartTime'], data['Address'], data['SerialID'], data['Event']), data['Type']))
 			if data['Status'] == 'Start' and data['Type'] == 'Alarm':
@@ -101,13 +103,23 @@ class Command(BaseCommand):
 
 	def multiple_threading(self, push_notification, create_topic, client, user, serial, data):
 		self.stdout.write('Start multiple threading.')
+		title_default = [
+			_('Some strangers has been detected...'),
+			_('A moment has been captured by you'),
+			_('Some movement has been recorded...'),
+		]
 		message = message_format(
-				title=u'{}'.format(data['Event']),
+				title=u'{}'.format(random.choice(title_default)),
 				body=data['Descrip'] if data['Descrip'] else u'{}'.format('Phát hiện chuyển động.'),
 				url=u'{}'.format('www.prod-alert.iotc.vn'),
 				acm_id=uuid.uuid1().hex,
 				time=int(time.time()),
-				serial=serial
+				camera_serial=serial,
+				letter_type=LETTER_TYPE[1][0],
+				attachment='',
+				notification_title='',
+				notification_body='',
+				notification_type=NOTIFICATION_TYPE[0][0]
 		)
 		t1 = Thread(target=push_notification, args=(client, user, message))
 		t2 = Thread(target=create_topic, args=(client, user, message))

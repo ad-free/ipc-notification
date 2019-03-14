@@ -52,7 +52,7 @@ def message_format(**kwargs):
 		'url': kwargs['url'],
 		'acm_id': kwargs['acm_id'],
 		'time': kwargs['time'],
-		'camera_serial': kwargs['serial'],
+		'camera_serial': kwargs['camera_serial'],
 		'letter_type': kwargs['letter_type'],
 		'attachment': kwargs['attachment'],
 		'notification_title': kwargs['notification_title'],
