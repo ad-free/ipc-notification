@@ -115,6 +115,7 @@ venv.bak/
 /running
 /deploy.sh
 /gunicorn.pid
+/prometheus
 
 /media
 /config

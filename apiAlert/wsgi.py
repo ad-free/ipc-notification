@@ -12,5 +12,6 @@ import os
 from django.core.wsgi import get_wsgi_application
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'apiAlert.settings')
+os.environ['prometheus_multiproc_dir'] = os.path.join('prometheus')
 
 application = get_wsgi_application()
