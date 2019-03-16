@@ -33,8 +33,8 @@ NOTIFICATION_TYPE = (
 class RegisterSerializer(serializers.Serializer):
 	id = serializers.UUIDField(read_only=True, default=uuid.uuid1)
 	username = serializers.CharField(max_length=32, required=True)
-	password = serializers.CharField(max_length=32, required=True)
-	platform = serializers.CharField(max_length=50, required=True)
+	password = serializers.CharField(max_length=255, required=True)
+	platform = serializers.CharField(max_length=255, required=True)
 	device_token = serializers.CharField(max_length=255, required=True)
 	bundle = serializers.CharField(max_length=100, required=True)
 
