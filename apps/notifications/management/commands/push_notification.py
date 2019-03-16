@@ -70,7 +70,7 @@ class Command(BaseCommand):
 			logger.error(logger_format(e, self.on_message.__name__))
 			data = {}
 			serial = ''
-		print(data)
+
 		if {'Status', 'Type'} <= data.keys():
 			logger.info(logger_format(u'{}-{}-{}-{}'.format(data['StartTime'], data['Address'], data['SerialID'], data['Event']), data['Type']))
 			if data['Status'] == 'Start' and data['Type'] == 'Alarm':
