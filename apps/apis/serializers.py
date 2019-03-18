@@ -263,11 +263,11 @@ class SendSerializer(serializers.Serializer):
 	phone_number = serializers.CharField(max_length=30, required=True)
 	title = serializers.CharField(max_length=100, required=True)
 	message = serializers.CharField(max_length=1024, required=True)
-	letter_type = serializers.CharField(max_length=100, required=True)
+	letter_type = serializers.IntegerField(required=True)
 	attachment = serializers.CharField(max_length=255, allow_blank=True, allow_null=True)
 	notification_title = serializers.CharField(max_length=100, required=False, allow_blank=True, allow_null=True)
 	notification_body = serializers.CharField(max_length=1024, required=False, allow_blank=True, allow_null=True)
-	notification_type = serializers.CharField(max_length=100, required=True)
+	notification_type = serializers.IntegerField(required=True)
 
 	def create(self, validated_data):
 		errors = {}
