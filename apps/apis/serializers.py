@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 
 from django.conf import settings
 
-from rest_framework import serializers, status
+from rest_framework import serializers, status, exceptions
 
 from apps.notifications.models import GCM, APNS
 from apps.users.models import Customer
@@ -28,6 +28,16 @@ NOTIFICATION_TYPE = (
 	(101, 'Camera motion'),
 	(102, 'User Inbox'),
 )
+
+
+class APIException(exceptions.APIException):
+	status_code = status.HTTP_200_OK
+	default_code = status.HTTP_400_BAD_REQUEST
+
+	def __init__(self, detail, status_code=None):
+		self.detail = detail
+		if status_code is not None:
+			self.status_code = status_code
 
 
 class RegisterSerializer(serializers.Serializer):
@@ -56,7 +66,7 @@ class RegisterSerializer(serializers.Serializer):
 			result = update_or_create_device(GCM, name, device_token, username, password, False)
 
 		if result['success']:
-			raise serializers.ValidationError({
+			raise APIException({
 				'status': status.HTTP_200_OK,
 				'result': True,
 				'message': result['message']
@@ -66,7 +76,7 @@ class RegisterSerializer(serializers.Serializer):
 		else:
 			errors.update({'message': 'Your platform is inaccurate.'})
 
-		raise serializers.ValidationError({
+		raise APIException({
 			'status': status.HTTP_400_BAD_REQUEST,
 			'result': False,
 			'errors': errors if errors else 'Check your platform and bundle fields.'
@@ -109,7 +119,7 @@ class UpdateSerializer(serializers.Serializer):
 					try:
 						Customer.objects.get(username=new_username)
 						errors.update({'message': 'New username always exists.'})
-						raise serializers.ValidationError({
+						raise APIException({
 							'status': status.HTTP_400_BAD_REQUEST,
 							'result': False,
 							'errors': errors
@@ -146,13 +156,13 @@ class UpdateSerializer(serializers.Serializer):
 								obj_schedule.user.remove(user)
 								if obj_schedule.user.count() == 0:
 									obj_schedule.delete()
-				raise serializers.ValidationError({
+				raise APIException({
 					'status': status.HTTP_200_OK,
 					'result': True,
 					'message': 'You have successfully updated.'
 				})
 
-		raise serializers.ValidationError({
+		raise APIException({
 			'status': status.HTTP_400_BAD_REQUEST,
 			'result': False,
 			'errors': errors
@@ -187,7 +197,7 @@ class DeleteSerializer(serializers.Serializer):
 				except Exception as e:
 					errors.update({'message': str(e)})
 
-		raise serializers.ValidationError({
+		raise APIException({
 			'status': status.HTTP_200_OK if not errors else status.HTTP_400_BAD_REQUEST,
 			'result': True if not errors else False,
 			'message': message,
@@ -234,14 +244,14 @@ class ActiveSerializer(serializers.Serializer):
 					except Schedule.DoesNotExist:
 						errors.update({schedule: 'Schedule does not exists.'})
 
-			raise serializers.ValidationError({
+			raise APIException({
 				'status': status.HTTP_200_OK,
 				'result': True,
 				'message': message,
 				'errors': errors
 			})
 
-		raise serializers.ValidationError({
+		raise APIException({
 			'status': status.HTTP_400_BAD_REQUEST,
 			'result': False,
 			'errors': errors
@@ -341,14 +351,14 @@ class SendSerializer(serializers.Serializer):
 								if 'Unregistered' in str(e):
 									obj_gcm.delete()
 								pass
-				raise serializers.ValidationError({
+				raise APIException({
 					'status': status.HTTP_200_OK,
 					'result': True,
 					'message': 'Send notifications to users successfully.'
 				})
 			else:
 				errors.update({'message': 'The user\'s status cannot be determined.'})
-		raise serializers.ValidationError({
+		raise APIException({
 			'status': status.HTTP_400_BAD_REQUEST,
 			'result': False,
 			'errors': errors
