@@ -278,10 +278,10 @@ def api_notification_send(request):
 		errors.update({'title': _('This field is required.')})
 	if not message:
 		errors.update({'message': _('This field is required.')})
-	if letter_type not in chain(*LETTER_TYPE):
-		errors.update({'letter_type': _('Incorrect formatting.')})
-	if notification_type not in chain(*NOTIFICATION_TYPE):
-		errors.update({'notification_type': _('Incorrect formatting.')})
+	if not letter_type:
+		errors.update({'letter_type': _('This field is required.')})
+	if not notification_type:
+		errors.update({'notification_type': _('This field is required.')})
 
 	if not errors:
 		try:

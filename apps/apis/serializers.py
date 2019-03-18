@@ -263,22 +263,22 @@ class SendSerializer(serializers.Serializer):
 	phone_number = serializers.CharField(max_length=30, required=True)
 	title = serializers.CharField(max_length=100, required=True)
 	message = serializers.CharField(max_length=1024, required=True)
-	letter_type = serializers.ChoiceField(LETTER_TYPE)
+	letter_type = serializers.CharField(max_length=100, required=True)
 	attachment = serializers.CharField(max_length=255, allow_blank=True, allow_null=True)
 	notification_title = serializers.CharField(max_length=100, required=False, allow_blank=True, allow_null=True)
 	notification_body = serializers.CharField(max_length=1024, required=False, allow_blank=True, allow_null=True)
-	notification_type = serializers.ChoiceField(NOTIFICATION_TYPE)
+	notification_type = serializers.CharField(max_length=100, required=True)
 
 	def create(self, validated_data):
 		errors = {}
-		phone_number = validated_data.get('phone_number', None)
-		title = validated_data.get('title', None)
-		message = validated_data.get('message', None)
-		letter_type = validated_data.get('letter_type', None)
-		attachment = validated_data.get('attachment', None)
-		notification_title = validated_data.get('notification_title', None)
-		notification_body = validated_data.get('notification_body', None)
-		notification_type = validated_data.get('notification_type', None)
+		phone_number = validated_data.get('phone_number', '')
+		title = validated_data.get('title', '')
+		message = validated_data.get('message', '')
+		letter_type = validated_data.get('letter_type', '')
+		attachment = validated_data.get('attachment', '')
+		notification_title = validated_data.get('notification_title', '')
+		notification_body = validated_data.get('notification_body', '')
+		notification_type = validated_data.get('notification_type', '')
 
 		try:
 			user = Customer.objects.get(username=phone_number)
