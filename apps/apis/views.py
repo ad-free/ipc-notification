@@ -12,13 +12,11 @@ from ..users.models import Customer
 from ..schedule.models import Schedule
 from ..notifications.models import GCM, APNS
 
-from .serializers import LETTER_TYPE, NOTIFICATION_TYPE
-from ..apis.utils import APIAccessPermission, update_or_create_device, message_format, single_subscribe_or_publish, push_notification
+from ..apis.utils import APIAccessPermission, update_or_create_device, push_notification
 from ..commons.utils import logger_format
 
 from functools import partial
 from ast import literal_eval
-from itertools import chain
 
 import paho.mqtt.client as mqtt
 import logging
@@ -292,6 +290,7 @@ def api_notification_send(request):
 			logger.info(logger_format('User does not exists.', api_notification_send.__name__))
 			errors.update({'message': _('User does not exists.')})
 		else:
+			user_status = {'status': 'offline'}
 			mqtt_client = mqtt.Client('iot-{}'.format(uuid.uuid1().hex))
 
 			def on_connect(client, userdata, flags, rc):
@@ -306,17 +305,7 @@ def api_notification_send(request):
 			def on_message(client, userdata, msg):
 				data = json.loads(msg.payload)
 				if 'status' in data:
-					push_notification(
-							user=user,
-							phone_number=phone_number,
-							client=client,
-							data=data,
-							title=title, message=message,
-							letter_type=letter_type, attachment=attachment,
-							notification_title=notification_title,
-							notification_body=notification_body,
-							notification_type=notification_type
-					)
+					user_status['status'] = data['status']
 				else:
 					errors.update({'message': _('The user\'s status cannot be determined.')})
 
@@ -340,8 +329,8 @@ def api_notification_send(request):
 					user=user,
 					phone_number=phone_number,
 					client=mqtt_client,
-					data={'status': 'offline'},
-					title=title, message=message,
+					data=user_status,
+					title=title, message=user_status,
 					letter_type=letter_type, attachment=attachment,
 					notification_title=notification_title,
 					notification_body=notification_body,

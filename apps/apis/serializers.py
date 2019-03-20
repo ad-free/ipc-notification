@@ -287,6 +287,7 @@ class SendSerializer(serializers.Serializer):
 		except Customer.DoesNotExist:
 			errors.update({'message': 'User does not exists.'})
 		else:
+			user_status = {'status': 'offline'}
 			mqtt_client = mqtt.Client('iot-{}'.format(uuid.uuid1().hex))
 
 			def on_connect(client, userdata, flags, rc):
@@ -297,17 +298,7 @@ class SendSerializer(serializers.Serializer):
 			def on_message(client, userdata, msg):
 				data = json.loads(msg.payload)
 				if 'status' in data:
-					push_notification(
-							user=user,
-							phone_number=phone_number,
-							client=client,
-							data=data,
-							title=title, message=message,
-							letter_type=letter_type, attachment=attachment,
-							notification_title=notification_title,
-							notification_body=notification_body,
-							notification_type=notification_type
-					)
+					user_status['status'] = data['status']
 				else:
 					errors.update({'message': 'The user\'s status cannot be determined.'})
 
@@ -331,8 +322,8 @@ class SendSerializer(serializers.Serializer):
 					user=user,
 					phone_number=phone_number,
 					client=mqtt_client,
-					data={'status': 'offline'},
-					title=title, message=message,
+					data=user_status,
+					title=title, message=user_status,
 					letter_type=letter_type, attachment=attachment,
 					notification_title=notification_title,
 					notification_body=notification_body,
