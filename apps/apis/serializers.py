@@ -9,13 +9,15 @@ from apps.notifications.models import GCM, APNS
 from apps.users.models import Customer
 from apps.schedule.models import Schedule
 
-from apps.apis.utils import update_or_create_device, single_subscribe_or_publish, message_format
+from apps.apis.utils import update_or_create_device, message_format, push_notification
 
 from ast import literal_eval
+import paho.mqtt.client as mqtt
 
 import uuid
 import json
 import time
+import ssl
 
 LETTER_TYPE = (
 	(201, 'Payment system'),
@@ -285,81 +287,119 @@ class SendSerializer(serializers.Serializer):
 		except Customer.DoesNotExist:
 			errors.update({'message': 'User does not exists.'})
 		else:
-			topic = settings.USER_TOPIC_STATUS.format(name=phone_number)
-			msg = single_subscribe_or_publish(topic=topic, is_subscribe=True)
-			data = json.loads(msg.payload)
-			if 'status' in data:
-				apns_list = APNS.objects.distinct().filter(user=user)
-				gcm_list = GCM.objects.distinct().filter(user=user)
-				message = message_format(
-						title=u'{}'.format(title),
-						body=u'{}'.format(message),
-						url=u'{}'.format('www.prod-alert.iotc.vn'),
-						acm_id=uuid.uuid1().hex,
-						time=int(time.time()),
-						camera_serial='',
-						letter_type=letter_type,
-						attachment=attachment,
-						notification_title=notification_title,
-						notification_body=notification_body,
-						notification_type=notification_type
-				)
-				single_subscribe_or_publish(
-						topic=settings.USER_TOPIC_ANNOUNCE.format(name=phone_number),
-						payload=json.dumps(message),
-						is_publish=True
-				)
-				if data['status'] == 'online':
-					if apns_list.exists():
-						device_message = json.dumps({
-							'aps': {
-								'alert': message,
-								'sound': 'default',
-								'content-available': 1
-							}
-						})
-						single_subscribe_or_publish(
-								topic=settings.USER_TOPIC_ANNOUNCE.format(name=phone_number),
-								payload=device_message,
-								is_publish=True
-						)
-					if gcm_list.exists():
-						device_message = json.dumps({
-							'data': message,
-							'sound': 'default',
-							'content-available': 1
-						})
-						single_subscribe_or_publish(
-								topic=settings.USER_TOPIC_ANNOUNCE.format(name=phone_number),
-								payload=device_message,
-								is_publish=True
-						)
+			mqtt_client = mqtt.Client('iot-{}'.format(uuid.uuid1().hex))
+
+			def on_connect(client, userdata, flags, rc):
+				if rc == 0:
+					for topics in settings.SUBSCRIBE_TOPICS:
+						client.subscribe(topics.format(name=phone_number))
+
+			def on_message(client, userdata, msg):
+				data = json.loads(msg.payload)
+				if 'status' in data:
+					push_notification(
+							user=user,
+							phone_number=phone_number,
+							client=client,
+							data=data,
+							title=title, message=message,
+							letter_type=letter_type, attachment=attachment,
+							notification_title=notification_title,
+							notification_body=notification_body,
+							notification_type=notification_type
+					)
 				else:
-					if apns_list.exists():
-						for obj_apns in apns_list:
-							try:
-								obj_apns.send_message(message=message, sound='default', content_available=1)
-							except Exception as e:
-								if 'Unregistered' in str(e):
-									obj_apns.delete()
-								pass
-					if gcm_list.exists():
-						for obj_gcm in gcm_list:
-							try:
-								obj_gcm.send_message(None, extra=message, use_fcm_notifications=False)
-							except Exception as e:
-								if 'Unregistered' in str(e):
-									obj_gcm.delete()
-								pass
+					errors.update({'message': 'The user\'s status cannot be determined.'})
+
+			mqtt_client.on_connect = on_connect
+			mqtt_client.on_message = on_message
+			mqtt_client.tls_set(
+					ca_certs=settings.CA_ROOT_CERT_FILE,
+					certfile=settings.CA_ROOT_CERT_CLIENT,
+					keyfile=settings.CA_ROOT_CERT_KEY,
+					cert_reqs=ssl.CERT_NONE,
+					tls_version=settings.CA_ROOT_TLS_VERSION,
+					ciphers=settings.CA_ROOT_CERT_CIPHERS
+			)
+			# client.tls_insecure_set(False)
+			mqtt_client.connect(host=settings.API_QUEUE_HOST, port=settings.API_QUEUE_PORT)
+			mqtt_client.username_pw_set(username=settings.API_ALERT_USERNAME, password=settings.API_ALERT_PASSWORD)
+			mqtt_client.loop_start()
+			time.sleep(settings.MQTT_TIMEOUT)
+			mqtt_client.loop_stop()
+			result = push_notification(
+					user=user,
+					phone_number=phone_number,
+					client=mqtt_client,
+					data={'status': 'offline'},
+					title=title, message=message,
+					letter_type=letter_type, attachment=attachment,
+					notification_title=notification_title,
+					notification_body=notification_body,
+					notification_type=notification_type
+			)
+			if result:
 				raise APIException({
 					'status': status.HTTP_200_OK,
 					'result': True,
 					'message': 'Send notifications to users successfully.'
 				})
-			else:
-				errors.update({'message': 'The user\'s status cannot be determined.'})
 		raise APIException({
 			'status': status.HTTP_400_BAD_REQUEST,
 			'result': False,
 			'errors': errors
 		})
+
+	def push_notification(**kwargs):
+		apns_list = APNS.objects.distinct().filter(user=kwargs['user'])
+		gcm_list = GCM.objects.distinct().filter(user=kwargs['user'])
+		message = message_format(
+				title=u'{}'.format(kwargs['title']),
+				body=u'{}'.format(kwargs['message']),
+				url=u'{}'.format('www.prod-alert.iotc.vn'),
+				acm_id=uuid.uuid1().hex,
+				time=int(time.time()),
+				camera_serial='',
+				letter_type=kwargs['letter_type'],
+				attachment=kwargs['attachment'],
+				notification_title=kwargs['notification_title'],
+				notification_body=kwargs['notification_body'],
+				notification_type=kwargs['notification_type']
+		)
+		if kwargs['data']['status'] == 'online':
+			if apns_list.exists():
+				device_message = json.dumps({
+					'aps': {
+						'alert': message,
+						'sound': 'default',
+						'content-available': 1
+					}
+				})
+				kwargs['client'].publish(settings.USER_TOPIC_ANNOUNCE.format(name=kwargs['phone_number']), device_message)
+			if gcm_list.exists():
+				device_message = json.dumps({
+					'data': message,
+					'sound': 'default',
+					'content-available': 1
+				})
+				kwargs['client'].publish(settings.USER_TOPIC_ANNOUNCE.format(name=kwargs['phone_number']), device_message)
+			return True
+		elif kwargs['data']['status'] == 'offline':
+			if apns_list.exists():
+				for obj_apns in apns_list:
+					try:
+						obj_apns.send_message(message=message, sound='default', content_available=1)
+					except Exception as e:
+						if 'Unregistered' in str(e):
+							obj_apns.delete()
+						pass
+			if gcm_list.exists():
+				for obj_gcm in gcm_list:
+					try:
+						obj_gcm.send_message(None, extra=message, use_fcm_notifications=False)
+					except Exception as e:
+						if 'Unregistered' in str(e):
+							obj_gcm.delete()
+						pass
+			return True
+		return False

@@ -13,17 +13,19 @@ from ..schedule.models import Schedule
 from ..notifications.models import GCM, APNS
 
 from .serializers import LETTER_TYPE, NOTIFICATION_TYPE
-from ..apis.utils import APIAccessPermission, update_or_create_device, message_format, single_subscribe_or_publish
+from ..apis.utils import APIAccessPermission, update_or_create_device, message_format, single_subscribe_or_publish, push_notification
 from ..commons.utils import logger_format
 
 from functools import partial
 from ast import literal_eval
 from itertools import chain
 
+import paho.mqtt.client as mqtt
 import logging
 import json
 import time
 import uuid
+import ssl
 
 logger = logging.getLogger('')
 
@@ -290,82 +292,68 @@ def api_notification_send(request):
 			logger.info(logger_format('User does not exists.', api_notification_send.__name__))
 			errors.update({'message': _('User does not exists.')})
 		else:
-			topic = settings.USER_TOPIC_STATUS.format(name=phone_number)
-			msg = single_subscribe_or_publish(topic=topic, is_subscribe=True)
-			data = json.loads(msg.payload)
-			if 'status' in data:
-				apns_list = APNS.objects.distinct().filter(user=user)
-				gcm_list = GCM.objects.distinct().filter(user=user)
-				message = message_format(
-						title=u'{}'.format(title),
-						body=u'{}'.format(message),
-						url=u'{}'.format('www.prod-alert.iotc.vn'),
-						acm_id=uuid.uuid1().hex,
-						time=int(time.time()),
-						serial='',
-						letter_type=letter_type,
-						attachment=attachment,
-						notification_title=notification_title,
-						notification_body=notification_body,
-						notification_type=notification_type
-				)
-				single_subscribe_or_publish(
-						topic=settings.USER_TOPIC_ANNOUNCE.format(name=phone_number),
-						payload=json.dumps(message),
-						is_publish=True
-				)
-				if data['status'] == 'online':
-					if apns_list.exists():
-						device_message = json.dumps({
-							'aps': {
-								'alert': message,
-								'sound': 'default',
-								'content-available': 1
-							}
-						})
-						single_subscribe_or_publish(
-								topic=settings.USER_TOPIC_ANNOUNCE.format(name=phone_number),
-								payload=device_message,
-								is_publish=True
-						)
-					if gcm_list.exists():
-						device_message = json.dumps({
-							'data': message,
-							'sound': 'default',
-							'content-available': 1
-						})
-						single_subscribe_or_publish(
-								topic=settings.USER_TOPIC_ANNOUNCE.format(name=phone_number),
-								payload=device_message,
-								is_publish=True
-						)
+			mqtt_client = mqtt.Client('iot-{}'.format(uuid.uuid1().hex))
+
+			def on_connect(client, userdata, flags, rc):
+				logger.info(logger_format('Connecting.....', on_connect.__name__))
+				if rc == 0:
+					logger.info(logger_format('Connected to broker server.', on_connect.__name__))
+					for topics in settings.SUBSCRIBE_TOPICS:
+						client.subscribe(topics.format(name=phone_number))
 				else:
-					if apns_list.exists():
-						for obj_apns in apns_list:
-							try:
-								obj_apns.send_message(message=message, sound='default', content_available=1)
-							except Exception as e:
-								logger.error(logger_format(u'{}-{}'.format(obj_apns.registration_id, e), api_notification_send.__name__))
-								if 'Unregistered' in str(e):
-									obj_apns.delete()
-								pass
-					if gcm_list.exists():
-						for obj_gcm in gcm_list:
-							try:
-								obj_gcm.send_message(None, extra=message, use_fcm_notifications=False)
-							except Exception as e:
-								logger.error(logger_format(u'{}-{}'.format(obj_gcm.registration_id, e), api_notification_send.__name__))
-								if 'Unregistered' in str(e):
-									obj_gcm.delete()
-								pass
+					logger.info(logger_format('Connection failed.', on_connect.__name__))
+
+			def on_message(client, userdata, msg):
+				data = json.loads(msg.payload)
+				if 'status' in data:
+					push_notification(
+							user=user,
+							phone_number=phone_number,
+							client=client,
+							data=data,
+							title=title, message=message,
+							letter_type=letter_type, attachment=attachment,
+							notification_title=notification_title,
+							notification_body=notification_body,
+							notification_type=notification_type
+					)
+				else:
+					errors.update({'message': _('The user\'s status cannot be determined.')})
+
+			mqtt_client.on_connect = on_connect
+			mqtt_client.on_message = on_message
+			mqtt_client.tls_set(
+					ca_certs=settings.CA_ROOT_CERT_FILE,
+					certfile=settings.CA_ROOT_CERT_CLIENT,
+					keyfile=settings.CA_ROOT_CERT_KEY,
+					cert_reqs=ssl.CERT_NONE,
+					tls_version=settings.CA_ROOT_TLS_VERSION,
+					ciphers=settings.CA_ROOT_CERT_CIPHERS
+			)
+			# client.tls_insecure_set(False)
+			mqtt_client.connect(host=settings.API_QUEUE_HOST, port=settings.API_QUEUE_PORT)
+			mqtt_client.username_pw_set(username=settings.API_ALERT_USERNAME, password=settings.API_ALERT_PASSWORD)
+			mqtt_client.loop_start()
+			time.sleep(settings.MQTT_TIMEOUT)
+			mqtt_client.loop_stop()
+			result = push_notification(
+					user=user,
+					phone_number=phone_number,
+					client=mqtt_client,
+					data={'status': 'offline'},
+					title=title, message=message,
+					letter_type=letter_type, attachment=attachment,
+					notification_title=notification_title,
+					notification_body=notification_body,
+					notification_type=notification_type
+			)
+			if result:
 				logger.info(logger_format('<-------  END  ------->', api_notification_send.__name__))
 				return Response({
 					'status': status.HTTP_200_OK,
 					'result': True,
 					'message': _('Send notifications to users successfully.')
 				}, status=status.HTTP_200_OK)
-			else:
-				errors.update({'message': _('The user\'s status cannot be determined.')})
 
 	logger.info(logger_format('<-------  END  ------->', api_notification_send.__name__))
 	return Response({

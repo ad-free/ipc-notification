@@ -8,10 +8,11 @@ from django.utils.translation import ugettext_lazy as _
 
 from rest_framework import permissions
 
+from apps.commons.utils import logger_format
+from apps.notifications.models import APNS, GCM
 from .models import Registration
 from ..users.models import Customer
 from push_notifications.models import CLOUD_MESSAGE_TYPES
-
 
 from datetime import datetime, timedelta
 
@@ -21,6 +22,7 @@ import ssl
 import json
 import uuid
 import logging
+import time
 
 logger = logging.getLogger('')
 
@@ -61,6 +63,63 @@ def message_format(**kwargs):
 	}
 
 
+def push_notification(**kwargs):
+	apns_list = APNS.objects.distinct().filter(user=kwargs['user'])
+	gcm_list = GCM.objects.distinct().filter(user=kwargs['user'])
+	message = message_format(
+			title=u'{}'.format(kwargs['title']),
+			body=u'{}'.format(kwargs['message']),
+			url=u'{}'.format('www.prod-alert.iotc.vn'),
+			acm_id=uuid.uuid1().hex,
+			time=int(time.time()),
+			camera_serial='',
+			letter_type=kwargs['letter_type'],
+			attachment=kwargs['attachment'],
+			notification_title=kwargs['notification_title'],
+			notification_body=kwargs['notification_body'],
+			notification_type=kwargs['notification_type']
+	)
+	if kwargs['data']['status'] == 'online':
+		if apns_list.exists():
+			device_message = json.dumps({
+				'aps': {
+					'alert': message,
+					'sound': 'default',
+					'content-available': 1
+				}
+			})
+			kwargs['client'].publish(settings.USER_TOPIC_ANNOUNCE.format(name=kwargs['phone_number']), device_message)
+		if gcm_list.exists():
+			device_message = json.dumps({
+				'data': message,
+				'sound': 'default',
+				'content-available': 1
+			})
+			kwargs['client'].publish(settings.USER_TOPIC_ANNOUNCE.format(name=kwargs['phone_number']), device_message)
+		return True
+	elif kwargs['data']['status'] == 'offline':
+		if apns_list.exists():
+			for obj_apns in apns_list:
+				try:
+					obj_apns.send_message(message=message, sound='default', content_available=1)
+				except Exception as e:
+					logger.error(logger_format(u'{}-{}'.format(obj_apns.registration_id, e), push_notification.__name__))
+					if 'Unregistered' in str(e):
+						obj_apns.delete()
+					pass
+		if gcm_list.exists():
+			for obj_gcm in gcm_list:
+				try:
+					obj_gcm.send_message(None, extra=message, use_fcm_notifications=False)
+				except Exception as e:
+					logger.error(logger_format(u'{}-{}'.format(obj_gcm.registration_id, e), push_notification.__name__))
+					if 'Unregistered' in str(e):
+						obj_gcm.delete()
+					pass
+		return True
+	return False
+
+
 def single_subscribe_or_publish(topic, payload=None, qos=0, is_publish=False, is_subscribe=False):
 	auth = {
 		'username': settings.API_ALERT_USERNAME,
@@ -94,7 +153,8 @@ def single_subscribe_or_publish(topic, payload=None, qos=0, is_publish=False, is
 				port=settings.API_QUEUE_PORT,
 				client_id='iot-{}'.format(uuid.uuid1().hex),
 				auth=auth,
-				tls=tls
+				tls=tls,
+				msg_count=100
 		)
 		return message
 	return False
