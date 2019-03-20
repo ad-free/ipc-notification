@@ -98,6 +98,7 @@ def push_notification(**kwargs):
 			kwargs['client'].publish(settings.USER_TOPIC_ANNOUNCE.format(name=kwargs['phone_number']), device_message)
 		return True
 	elif kwargs['data']['status'] == 'offline':
+		kwargs['client'].publish(settings.USER_TOPIC_ANNOUNCE.format(name=kwargs['phone_number']), json.dumps(message))
 		if apns_list.exists():
 			for obj_apns in apns_list:
 				try:

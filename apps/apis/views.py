@@ -330,7 +330,7 @@ def api_notification_send(request):
 					phone_number=phone_number,
 					client=mqtt_client,
 					data=user_status,
-					title=title, message=user_status,
+					title=title, message=message,
 					letter_type=letter_type, attachment=attachment,
 					notification_title=notification_title,
 					notification_body=notification_body,
