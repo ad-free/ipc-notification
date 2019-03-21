@@ -15,6 +15,7 @@ from ..users.models import Customer
 from push_notifications.models import CLOUD_MESSAGE_TYPES
 
 from datetime import datetime, timedelta
+from ast import literal_eval
 
 import paho.mqtt.subscribe as subscribe
 import paho.mqtt.publish as publish
@@ -53,10 +54,9 @@ def message_format(**kwargs):
 		'body': kwargs['body'],
 		'url': kwargs['url'],
 		'acm_id': kwargs['acm_id'],
-		'time': kwargs['time'],
+		'time': int(time.time()),
 		'camera_serial': kwargs['camera_serial'],
 		'letter_type': kwargs['letter_type'],
-		'attachment': kwargs['attachment'],
 		'notification_title': kwargs['notification_title'],
 		'notification_body': kwargs['notification_body'],
 		'notification_type': kwargs['notification_type']
@@ -70,8 +70,7 @@ def push_notification(**kwargs):
 			title=u'{}'.format(kwargs['title']),
 			body=u'{}'.format(kwargs['message']),
 			url=u'{}'.format('www.prod-alert.iotc.vn'),
-			acm_id=uuid.uuid1().hex,
-			time=int(time.time()),
+			acm_id=kwargs['acm_id'].hex,
 			camera_serial='',
 			letter_type=kwargs['letter_type'],
 			attachment=kwargs['attachment'],
@@ -80,6 +79,9 @@ def push_notification(**kwargs):
 			notification_type=kwargs['notification_type']
 	)
 	if kwargs['data']['status'] == 'online':
+		kwargs['attachment'] = literal_eval(kwargs['attachment'])
+		for key in kwargs['attachment'].keys():
+			message.update({key: kwargs['attachment'][key]})
 		if apns_list.exists():
 			device_message = json.dumps({
 				'aps': {
@@ -98,7 +100,6 @@ def push_notification(**kwargs):
 			kwargs['client'].publish(settings.USER_TOPIC_ANNOUNCE.format(name=kwargs['phone_number']), device_message)
 		return True
 	elif kwargs['data']['status'] == 'offline':
-		kwargs['client'].publish(settings.USER_TOPIC_ANNOUNCE.format(name=kwargs['phone_number']), json.dumps(message))
 		if apns_list.exists():
 			for obj_apns in apns_list:
 				try:
@@ -215,3 +216,22 @@ class APIAccessPermission(permissions.BasePermission):
 			logger.error('{}'.format(e))
 			pass
 		return False
+
+
+def connect_mqtt_server(client, on_connect, on_message):
+	client.on_connect = on_connect
+	client.on_message = on_message
+	client.tls_set(
+			ca_certs=settings.CA_ROOT_CERT_FILE,
+			certfile=settings.CA_ROOT_CERT_CLIENT,
+			keyfile=settings.CA_ROOT_CERT_KEY,
+			cert_reqs=ssl.CERT_NONE,
+			tls_version=settings.CA_ROOT_TLS_VERSION,
+			ciphers=settings.CA_ROOT_CERT_CIPHERS
+	)
+	# client.tls_insecure_set(False)
+	client.connect(host=settings.API_QUEUE_HOST, port=settings.API_QUEUE_PORT)
+	client.username_pw_set(username=settings.API_ALERT_USERNAME, password=settings.API_ALERT_PASSWORD)
+	client.loop_start()
+	time.sleep(settings.MQTT_TIMEOUT)
+	client.loop_stop()

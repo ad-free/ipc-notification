@@ -12,7 +12,7 @@ from ..users.models import Customer
 from ..schedule.models import Schedule
 from ..notifications.models import GCM, APNS
 
-from ..apis.utils import APIAccessPermission, update_or_create_device, push_notification
+from ..apis.utils import APIAccessPermission, update_or_create_device, push_notification, connect_mqtt_server
 from ..commons.utils import logger_format
 
 from functools import partial
@@ -263,6 +263,7 @@ def api_notification_delete(request):
 def api_notification_send(request):
 	logger.info(logger_format('<-------  START  ------->', api_notification_send.__name__))
 	errors = {}
+	acm_id = request.POST.get('acm_id', '').strip()
 	phone_number = request.POST.get('phone_number', '').strip()
 	title = request.POST.get('title', '').strip()
 	message = request.POST.get('message', '').strip()
@@ -282,6 +283,8 @@ def api_notification_send(request):
 		errors.update({'letter_type': _('This field is required.')})
 	if not notification_type:
 		errors.update({'notification_type': _('This field is required.')})
+	if not acm_id:
+		errors.update({'acm_id': _('This field is required.')})
 
 	if not errors:
 		try:
@@ -309,26 +312,12 @@ def api_notification_send(request):
 				else:
 					errors.update({'message': _('The user\'s status cannot be determined.')})
 
-			mqtt_client.on_connect = on_connect
-			mqtt_client.on_message = on_message
-			mqtt_client.tls_set(
-					ca_certs=settings.CA_ROOT_CERT_FILE,
-					certfile=settings.CA_ROOT_CERT_CLIENT,
-					keyfile=settings.CA_ROOT_CERT_KEY,
-					cert_reqs=ssl.CERT_NONE,
-					tls_version=settings.CA_ROOT_TLS_VERSION,
-					ciphers=settings.CA_ROOT_CERT_CIPHERS
-			)
-			# client.tls_insecure_set(False)
-			mqtt_client.connect(host=settings.API_QUEUE_HOST, port=settings.API_QUEUE_PORT)
-			mqtt_client.username_pw_set(username=settings.API_ALERT_USERNAME, password=settings.API_ALERT_PASSWORD)
-			mqtt_client.loop_start()
-			time.sleep(settings.MQTT_TIMEOUT)
-			mqtt_client.loop_stop()
-			mqtt_client.disconnect()
+			connect_mqtt_server(client=mqtt_client, on_connect=on_connect, on_message=on_message)
+
 			result = push_notification(
 					user=user,
 					phone_number=phone_number,
+					acm_id=acm_id,
 					client=mqtt_client,
 					data=user_status,
 					title=title, message=message,

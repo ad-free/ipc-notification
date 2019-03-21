@@ -9,7 +9,7 @@ from apps.notifications.models import GCM, APNS
 from apps.users.models import Customer
 from apps.schedule.models import Schedule
 
-from apps.apis.utils import update_or_create_device, message_format, push_notification
+from apps.apis.utils import update_or_create_device, push_notification, connect_mqtt_server
 
 from ast import literal_eval
 import paho.mqtt.client as mqtt
@@ -262,6 +262,7 @@ class ActiveSerializer(serializers.Serializer):
 
 class SendSerializer(serializers.Serializer):
 	id = serializers.UUIDField(read_only=True, default=uuid.uuid1)
+	acm_id = serializers.UUIDField(required=True)
 	phone_number = serializers.CharField(max_length=30, required=True)
 	title = serializers.CharField(max_length=100, required=True)
 	message = serializers.CharField(max_length=1024, required=True)
@@ -273,6 +274,7 @@ class SendSerializer(serializers.Serializer):
 
 	def create(self, validated_data):
 		errors = {}
+		acm_id = validated_data.get('acm_id', '')
 		phone_number = validated_data.get('phone_number', '')
 		title = validated_data.get('title', '')
 		message = validated_data.get('message', '')
@@ -302,29 +304,15 @@ class SendSerializer(serializers.Serializer):
 				else:
 					errors.update({'message': 'The user\'s status cannot be determined.'})
 
-			mqtt_client.on_connect = on_connect
-			mqtt_client.on_message = on_message
-			mqtt_client.tls_set(
-					ca_certs=settings.CA_ROOT_CERT_FILE,
-					certfile=settings.CA_ROOT_CERT_CLIENT,
-					keyfile=settings.CA_ROOT_CERT_KEY,
-					cert_reqs=ssl.CERT_NONE,
-					tls_version=settings.CA_ROOT_TLS_VERSION,
-					ciphers=settings.CA_ROOT_CERT_CIPHERS
-			)
-			# client.tls_insecure_set(False)
-			mqtt_client.connect(host=settings.API_QUEUE_HOST, port=settings.API_QUEUE_PORT)
-			mqtt_client.username_pw_set(username=settings.API_ALERT_USERNAME, password=settings.API_ALERT_PASSWORD)
-			mqtt_client.loop_start()
-			time.sleep(settings.MQTT_TIMEOUT)
-			mqtt_client.loop_stop()
-			mqtt_client.disconnect()
+			connect_mqtt_server(client=mqtt_client, on_connect=on_connect, on_message=on_message)
+
 			result = push_notification(
 					user=user,
 					phone_number=phone_number,
 					client=mqtt_client,
 					data=user_status,
 					title=title, message=message,
+					acm_id=acm_id,
 					letter_type=letter_type, attachment=attachment,
 					notification_title=notification_title,
 					notification_body=notification_body,
@@ -342,56 +330,56 @@ class SendSerializer(serializers.Serializer):
 			'errors': errors
 		})
 
-	def push_notification(**kwargs):
-		apns_list = APNS.objects.distinct().filter(user=kwargs['user'])
-		gcm_list = GCM.objects.distinct().filter(user=kwargs['user'])
-		message = message_format(
-				title=u'{}'.format(kwargs['title']),
-				body=u'{}'.format(kwargs['message']),
-				url=u'{}'.format('www.prod-alert.iotc.vn'),
-				acm_id=uuid.uuid1().hex,
-				time=int(time.time()),
-				camera_serial='',
-				letter_type=kwargs['letter_type'],
-				attachment=kwargs['attachment'],
-				notification_title=kwargs['notification_title'],
-				notification_body=kwargs['notification_body'],
-				notification_type=kwargs['notification_type']
-		)
-		if kwargs['data']['status'] == 'online':
-			if apns_list.exists():
-				device_message = json.dumps({
-					'aps': {
-						'alert': message,
-						'sound': 'default',
-						'content-available': 1
-					}
-				})
-				kwargs['client'].publish(settings.USER_TOPIC_ANNOUNCE.format(name=kwargs['phone_number']), device_message)
-			if gcm_list.exists():
-				device_message = json.dumps({
-					'data': message,
-					'sound': 'default',
-					'content-available': 1
-				})
-				kwargs['client'].publish(settings.USER_TOPIC_ANNOUNCE.format(name=kwargs['phone_number']), device_message)
-			return True
-		elif kwargs['data']['status'] == 'offline':
-			if apns_list.exists():
-				for obj_apns in apns_list:
-					try:
-						obj_apns.send_message(message=message, sound='default', content_available=1)
-					except Exception as e:
-						if 'Unregistered' in str(e):
-							obj_apns.delete()
-						pass
-			if gcm_list.exists():
-				for obj_gcm in gcm_list:
-					try:
-						obj_gcm.send_message(None, extra=message, use_fcm_notifications=False)
-					except Exception as e:
-						if 'Unregistered' in str(e):
-							obj_gcm.delete()
-						pass
-			return True
-		return False
+	# def push_notification(**kwargs):
+	# 	apns_list = APNS.objects.distinct().filter(user=kwargs['user'])
+	# 	gcm_list = GCM.objects.distinct().filter(user=kwargs['user'])
+	# 	message = message_format(
+	# 			title=u'{}'.format(kwargs['title']),
+	# 			body=u'{}'.format(kwargs['message']),
+	# 			url=u'{}'.format('www.prod-alert.iotc.vn'),
+	# 			acm_id=uuid.uuid1().hex,
+	# 			time=int(time.time()),
+	# 			camera_serial='',
+	# 			letter_type=kwargs['letter_type'],
+	# 			attachment=kwargs['attachment'],
+	# 			notification_title=kwargs['notification_title'],
+	# 			notification_body=kwargs['notification_body'],
+	# 			notification_type=kwargs['notification_type']
+	# 	)
+	# 	if kwargs['data']['status'] == 'online':
+	# 		if apns_list.exists():
+	# 			device_message = json.dumps({
+	# 				'aps': {
+	# 					'alert': message,
+	# 					'sound': 'default',
+	# 					'content-available': 1
+	# 				}
+	# 			})
+	# 			kwargs['client'].publish(settings.USER_TOPIC_ANNOUNCE.format(name=kwargs['phone_number']), device_message)
+	# 		if gcm_list.exists():
+	# 			device_message = json.dumps({
+	# 				'data': message,
+	# 				'sound': 'default',
+	# 				'content-available': 1
+	# 			})
+	# 			kwargs['client'].publish(settings.USER_TOPIC_ANNOUNCE.format(name=kwargs['phone_number']), device_message)
+	# 		return True
+	# 	elif kwargs['data']['status'] == 'offline':
+	# 		if apns_list.exists():
+	# 			for obj_apns in apns_list:
+	# 				try:
+	# 					obj_apns.send_message(message=message, sound='default', content_available=1)
+	# 				except Exception as e:
+	# 					if 'Unregistered' in str(e):
+	# 						obj_apns.delete()
+	# 					pass
+	# 		if gcm_list.exists():
+	# 			for obj_gcm in gcm_list:
+	# 				try:
+	# 					obj_gcm.send_message(None, extra=message, use_fcm_notifications=False)
+	# 				except Exception as e:
+	# 					if 'Unregistered' in str(e):
+	# 						obj_gcm.delete()
+	# 					pass
+	# 		return True
+	# 	return False
