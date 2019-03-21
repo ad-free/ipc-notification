@@ -325,6 +325,7 @@ def api_notification_send(request):
 			mqtt_client.loop_start()
 			time.sleep(settings.MQTT_TIMEOUT)
 			mqtt_client.loop_stop()
+			mqtt_client.disconnect()
 			result = push_notification(
 					user=user,
 					phone_number=phone_number,
