@@ -68,7 +68,7 @@ def push_notification(**kwargs):
 	gcm_list = GCM.objects.distinct().filter(user=kwargs['user'])
 	message = message_format(
 			title=u'{}'.format(kwargs['title']),
-			body=u'{}'.format(kwargs['message']),
+			body=u'{}'.format(kwargs['body']),
 			url=u'{}'.format('www.prod-alert.iotc.vn'),
 			acm_id=kwargs['acm_id'].hex,
 			camera_serial='',

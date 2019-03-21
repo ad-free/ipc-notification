@@ -266,7 +266,7 @@ def api_notification_send(request):
 	acm_id = request.POST.get('acm_id', '').strip()
 	phone_number = request.POST.get('phone_number', '').strip()
 	title = request.POST.get('title', '').strip()
-	message = request.POST.get('message', '').strip()
+	body = request.POST.get('body', '').strip()
 	letter_type = request.POST.get('letter_type', '').strip()
 	attachment = request.POST.get('attachment', '').strip()
 	notification_title = request.POST.get('notification_title,', '').strip()
@@ -277,8 +277,8 @@ def api_notification_send(request):
 		errors.update({'phone_number': _('This field is required.')})
 	if not title:
 		errors.update({'title': _('This field is required.')})
-	if not message:
-		errors.update({'message': _('This field is required.')})
+	if not body:
+		errors.update({'body': _('This field is required.')})
 	if not letter_type:
 		errors.update({'letter_type': _('This field is required.')})
 	if not notification_type:
@@ -320,7 +320,7 @@ def api_notification_send(request):
 					acm_id=acm_id,
 					client=mqtt_client,
 					data=user_status,
-					title=title, message=message,
+					title=title, body=body,
 					letter_type=letter_type, attachment=attachment,
 					notification_title=notification_title,
 					notification_body=notification_body,

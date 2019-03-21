@@ -265,7 +265,7 @@ class SendSerializer(serializers.Serializer):
 	acm_id = serializers.UUIDField(required=True)
 	phone_number = serializers.CharField(max_length=30, required=True)
 	title = serializers.CharField(max_length=100, required=True)
-	message = serializers.CharField(max_length=1024, required=True)
+	body = serializers.CharField(max_length=1024, required=True)
 	letter_type = serializers.IntegerField(required=True)
 	attachment = serializers.CharField(max_length=255, allow_blank=True, allow_null=True)
 	notification_title = serializers.CharField(max_length=100, required=False, allow_blank=True, allow_null=True)
@@ -277,7 +277,7 @@ class SendSerializer(serializers.Serializer):
 		acm_id = validated_data.get('acm_id', '')
 		phone_number = validated_data.get('phone_number', '')
 		title = validated_data.get('title', '')
-		message = validated_data.get('message', '')
+		body = validated_data.get('body', '')
 		letter_type = validated_data.get('letter_type', '')
 		attachment = validated_data.get('attachment', '')
 		notification_title = validated_data.get('notification_title', '')
@@ -311,7 +311,7 @@ class SendSerializer(serializers.Serializer):
 					phone_number=phone_number,
 					client=mqtt_client,
 					data=user_status,
-					title=title, message=message,
+					title=title, body=body,
 					acm_id=acm_id,
 					letter_type=letter_type, attachment=attachment,
 					notification_title=notification_title,
