@@ -73,15 +73,16 @@ def push_notification(**kwargs):
 			acm_id=kwargs['acm_id'].hex,
 			camera_serial='',
 			letter_type=kwargs['letter_type'],
-			attachment=kwargs['attachment'],
 			notification_title=kwargs['notification_title'],
 			notification_body=kwargs['notification_body'],
 			notification_type=kwargs['notification_type']
 	)
+
+	kwargs['attachment'] = literal_eval(kwargs['attachment'])
+	for key, value in kwargs['attachment'].items():
+		message.update({key: value})
+
 	if kwargs['data']['status'] == 'online':
-		kwargs['attachment'] = literal_eval(kwargs['attachment'])
-		for key in kwargs['attachment'].keys():
-			message.update({key: kwargs['attachment'][key]})
 		if apns_list.exists():
 			device_message = json.dumps({
 				'aps': {
