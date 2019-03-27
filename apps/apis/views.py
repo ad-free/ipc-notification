@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 
 from django.conf import settings
 from django.utils.translation import ugettext_lazy as _
+from drf_yasg.utils import swagger_auto_schema
 
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -15,30 +16,46 @@ from ..notifications.models import GCM, APNS
 from ..apis.utils import APIAccessPermission, update_or_create_device, push_notification, connect_mqtt_server
 from ..commons.utils import logger_format
 
+from .serializers import (
+	RegisterSerializer, UpdateSerializer,
+	DeleteSerializer, ActiveSerializer, SendSerializer
+)
+
 from functools import partial
 from ast import literal_eval
 
 import paho.mqtt.client as mqtt
 import logging
 import json
-import time
 import uuid
-import ssl
 
 logger = logging.getLogger('')
 
 
+@api_view(['POST'])
+@permission_classes((partial(APIAccessPermission, 'api_auth_sign_in'),))
+def api_auth_sign_in(request):
+	pass
+
+
+@api_view(['POST'])
+@permission_classes((partial(APIAccessPermission, 'api_auth_sign_out'),))
+def api_auth_sign_out(request):
+	pass
+
+
+@swagger_auto_schema(methods=['post'], request_body=RegisterSerializer)
 @api_view(['POST'])
 @permission_classes((partial(APIAccessPermission, 'api_notification_register'),))
 def api_notification_register(request):
 	logger.info(logger_format('<-------  START  ------->', api_notification_register.__name__))
 	errors = {}
 	result = {'success': '', 'message': ''}
-	username = request.POST.get('username', '').strip()
-	password = request.POST.get('password', '')
-	platform = request.POST.get('platform', '').strip()
-	device_token = request.POST.get('device_token', '').strip()
-	bundle = request.POST.get('bundle', '').strip()
+	username = request.data.get('username', '').strip()
+	password = request.data.get('password', '')
+	platform = request.data.get('platform', '').strip()
+	device_token = request.data.get('device_token', '').strip()
+	bundle = request.data.get('bundle', '').strip()
 	name = platform + '_' + bundle
 
 	logger.info(logger_format('Check your platform', api_notification_register.__name__))
@@ -69,16 +86,17 @@ def api_notification_register(request):
 	}, status=status.HTTP_200_OK)
 
 
+@swagger_auto_schema(methods=['post'], request_body=UpdateSerializer)
 @api_view(['POST'])
 @permission_classes((partial(APIAccessPermission, 'api_notification_update'),))
 def api_notification_update(request):
 	logger.info(logger_format('<-------  START  ------->', api_notification_update.__name__))
 	errors = {}
-	username = request.POST.get('username', '').strip()
-	new_username = request.POST.get('new_username', '').strip()
-	serial = request.POST.get('serial', '').strip()
-	schedule_list = request.POST.get('schedule', '').strip()
-	is_unshared = request.POST.get('is_unshared', '').strip()
+	username = request.data.get('username', '').strip()
+	new_username = request.data.get('new_username', '').strip()
+	serial = request.data.get('serial', '').strip()
+	schedule_list = request.data.get('schedule', '').strip()
+	is_unshared = request.data.get('is_unshared', '').strip()
 
 	if not username:
 		errors.update({'username': _('This field is required.')})
@@ -154,15 +172,16 @@ def api_notification_update(request):
 	}, status=status.HTTP_200_OK)
 
 
+@swagger_auto_schema(methods=['post'], request_body=ActiveSerializer)
 @api_view(['POST'])
 @permission_classes((partial(APIAccessPermission, 'api_notification_active'),))
 def api_notification_active(request):
 	logger.info(logger_format('<-------  START  ------->', api_notification_active.__name__))
 	errors = {}
-	username = request.POST.get('username', '').strip()
-	serial = request.POST.get('serial', '').strip()
-	schedule_id = request.POST.get('schedule_id', '').strip()
-	is_active = request.POST.get('is_active', '0').strip()
+	username = request.data.get('username', '').strip()
+	serial = request.data.get('serial', '').strip()
+	schedule_id = request.data.get('schedule_id', '').strip()
+	is_active = request.data.get('is_active', '0').strip()
 
 	logger.info(logger_format('Check serial', api_notification_active.__name__))
 	if not serial:
@@ -215,14 +234,15 @@ def api_notification_active(request):
 	}, status=status.HTTP_200_OK)
 
 
+@swagger_auto_schema(methods=['post'], request_body=DeleteSerializer)
 @api_view(['POST'])
 @permission_classes((partial(APIAccessPermission, 'api_notification_delete'),))
 def api_notification_delete(request):
 	logger.info(logger_format('<-------  START  ------->', api_notification_delete.__name__))
 	errors = {}
-	serial = request.POST.get('serial', '').strip()
-	schedule_list = request.POST.get('schedule_id', '').strip()
-	is_delete = request.POST.get('is_delete', '').strip()
+	serial = request.data.get('serial', '').strip()
+	schedule_list = request.data.get('schedule_id', '').strip()
+	is_delete = request.data.get('is_delete', '').strip()
 
 	logger.info(logger_format('Check serial', api_notification_delete.__name__))
 	if not serial:
@@ -258,20 +278,21 @@ def api_notification_delete(request):
 	}, status=status.HTTP_200_OK)
 
 
+@swagger_auto_schema(methods=['post'], request_body=SendSerializer)
 @api_view(['POST'])
 @permission_classes((partial(APIAccessPermission, 'api_notification_send'),))
 def api_notification_send(request):
 	logger.info(logger_format('<-------  START  ------->', api_notification_send.__name__))
 	errors = {}
-	acm_id = request.POST.get('acm_id', '').strip()
-	phone_number = request.POST.get('phone_number', '').strip()
-	title = request.POST.get('title', '').strip()
-	body = request.POST.get('body', '').strip()
-	letter_type = request.POST.get('letter_type', '').strip()
-	attachment = request.POST.get('attachment', '').strip()
-	notification_title = request.POST.get('notification_title,', '').strip()
-	notification_body = request.POST.get('notification_body', '').strip()
-	notification_type = request.POST.get('notification_type', '').strip()
+	acm_id = request.data.get('acm_id', '').strip()
+	phone_number = request.data.get('phone_number', '').strip()
+	title = request.data.get('title', '').strip()
+	body = request.data.get('body', '').strip()
+	letter_type = request.data.get('letter_type', '').strip()
+	attachment = request.data.get('attachment', '').strip()
+	notification_title = request.data.get('notification_title,', '').strip()
+	notification_body = request.data.get('notification_body', '').strip()
+	notification_type = request.data.get('notification_type', '').strip()
 
 	if not phone_number:
 		errors.update({'phone_number': _('This field is required.')})

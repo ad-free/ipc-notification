@@ -1,22 +1,43 @@
-from django.urls import path, include
+from django.urls import path
+from django.contrib.auth.decorators import login_required
+
+from rest_framework import permissions
+from drf_yasg.views import get_schema_view
+from drf_yasg import openapi
+
 from apps.apis import views
-from apps.apis import viewset
-from rest_framework import routers
-from rest_framework_swagger.views import get_swagger_view
 
-schema_view = get_swagger_view(title='API Lists')
+docs = get_schema_view(
+		openapi.Info(
+				title='Snippets API',
+				default_version='v1.0',
+				description='',
+				terms_of_service='',
+				contact=openapi.Contact(email='duyta8@fpt.com.vn')
+		),
+		public=True,
+		permission_classes=(permissions.IsAuthenticated, permissions.IsAdminUser),
+)
 
-routers = routers.DefaultRouter()
-routers.register(r'notification/register', viewset.RegisterViewSet, basename='register')
-routers.register(r'notification/update', viewset.UpdateViewSet, basename='update')
-routers.register(r'notification/active', viewset.ActiveViewSet, basename='active')
-routers.register(r'notification/delete', viewset.DeleteViewSet, basename='delete')
-routers.register(r'notification/send', viewset.SendViewSet, basename='send')
+re_doc = get_schema_view(
+		openapi.Info(
+				title='Snippets API',
+				default_version='v1.0',
+				description='',
+				terms_of_service='',
+				contact=openapi.Contact(email='duyta8@fpt.com.vn')
+		),
+		public=True,
+		permission_classes=(permissions.IsAuthenticated, permissions.IsAdminUser),
+)
 
 urlpatterns = [
 	# Docs
-	path('', include(routers.urls)),
-	path('docs', schema_view),
+	path('docs/', login_required(docs.with_ui('swagger', cache_timeout=0)), name='schema-swagger-ui'),
+	path('redoc/', login_required(re_doc.with_ui('redoc', cache_timeout=0)), name='schema-redoc'),
+	# APIs
+	path('auth/sign-in/', views.api_auth_sign_in, name='api_auth_sign_in'),
+	path('auth/sign-out/', views.api_auth_sign_out, name='api_auth_sign_out'),
 	path('notification/register/', views.api_notification_register, name='api_notification_register'),
 	path('notification/update/', views.api_notification_update, name='api_notification_update'),
 	path('notification/delete/', views.api_notification_delete, name='api_notification_delete'),
