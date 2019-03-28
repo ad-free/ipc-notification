@@ -70,7 +70,7 @@ def push_notification(**kwargs):
 			title=u'{}'.format(kwargs['title']),
 			body=u'{}'.format(kwargs['body']),
 			url=u'{}'.format('www.prod-alert.iotc.vn'),
-			acm_id=kwargs['acm_id'].hex,
+			acm_id=kwargs['acm_id'],
 			camera_serial='',
 			letter_type=kwargs['letter_type'],
 			notification_title=kwargs['notification_title'],
