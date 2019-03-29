@@ -16,7 +16,7 @@ docs = get_schema_view(
 				contact=openapi.Contact(email='duyta8@fpt.com.vn')
 		),
 		public=True,
-		permission_classes=(permissions.IsAuthenticated, permissions.IsAdminUser),
+		permission_classes=(permissions.IsAuthenticated,),
 )
 
 re_doc = get_schema_view(
