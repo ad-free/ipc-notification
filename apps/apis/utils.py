@@ -42,7 +42,7 @@ def update_or_create_device(device, name, token, username, password, android=Fal
 			if android:
 				obj_device.cloud_message_type = CLOUD_MESSAGE_TYPES[0][0]
 			obj_device.user = obj_user
-			obj_device.is_active = True
+			obj_device.active = True
 			obj_device.save()
 			return {'success': True, 'message': _('You have successfully updated.')}
 	return {'success': False, 'message': _('Device token always exists.')}

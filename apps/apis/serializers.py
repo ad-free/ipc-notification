@@ -69,6 +69,18 @@ class ActiveSerializer(serializers.Serializer):
 		pass
 
 
+class InActiveSerializer(serializers.Serializer):
+	username = serializers.CharField(max_length=32)
+	device_token = serializers.CharField(max_length=255)
+	platform = serializers.CharField(max_length=5)
+
+	def create(self, validated_data):
+		pass
+
+	def update(self, instance, validated_data):
+		pass
+
+
 class SendSerializer(serializers.Serializer):
 	acm_id = serializers.UUIDField(required=True)
 	phone_number = serializers.CharField(max_length=30, required=True)

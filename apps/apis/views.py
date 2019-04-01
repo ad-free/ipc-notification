@@ -18,7 +18,8 @@ from ..commons.utils import logger_format
 
 from .serializers import (
 	RegisterSerializer, UpdateSerializer,
-	DeleteSerializer, ActiveSerializer, SendSerializer
+	DeleteSerializer, ActiveSerializer,
+	InActiveSerializer, SendSerializer
 )
 
 from functools import partial
@@ -227,6 +228,65 @@ def api_notification_active(request):
 			}, status=status.HTTP_200_OK)
 
 	logger.info(logger_format('<-------  END  ------->', api_notification_active.__name__))
+	return Response({
+		'status': status.HTTP_400_BAD_REQUEST,
+		'result': False,
+		'errors': errors
+	}, status=status.HTTP_200_OK)
+
+
+@swagger_auto_schema(methods=['post'], request_body=InActiveSerializer)
+@api_view(['POST'])
+@permission_classes((partial(APIAccessPermission, 'api_notification_inactive'),))
+def api_notification_inactive(request):
+	logger.info(logger_format('<-------  START  ------->', api_notification_inactive.__name__))
+	errors = {}
+	device_token = request.data.get('device_token', '').strip()
+	username = request.data.get('username', '').strip()
+	platform = request.data.get('platform', '').strip()
+
+	if not device_token:
+		errors.update({'device_token': _('This field is required.')})
+	if not username:
+		errors.update({'username': _('This field is required.')})
+	if not platform:
+		errors.update({'platform': _('This field is required.')})
+
+	if not errors:
+		try:
+			user = Customer.objects.get(username=username)
+			if platform == 'apns':
+				apns = APNS.objects.get(registration_id=device_token, user=user)
+				apns.active = False
+				apns.save()
+			elif platform == 'gcm':
+				gcm = GCM.objects.get(registration_id=device_token, user=user)
+				gcm.active = False
+				gcm.save()
+			else:
+				errors.update({'platform': _('Incorrect formatting.')})
+
+			if not errors:
+				logger.info(logger_format('<-------  END  ------->', api_notification_inactive.__name__))
+				return Response({
+					'status': status.HTTP_200_OK,
+					'result': True,
+					'message': _('Disable sending notifications successfully.'),
+				}, status=status.HTTP_200_OK)
+		except Customer.DoesNotExist:
+			logger.error(logger_format('The user does not exists.', api_notification_inactive.__name__))
+			errors.update({'message': _('The user does not exists.')})
+		except APNS.DoesNotExist:
+			logger.error(logger_format('APNS does not exists.', api_notification_inactive.__name__))
+			errors.update({'message': _('The device does not exists.')})
+		except GCM.DoesNotExist:
+			logger.error(logger_format('GCM does not exists.', api_notification_inactive.__name__))
+			errors.update({'message': _('The device does not exists.')})
+		except Exception as e:
+			logger.error(logger_format(str(e), api_notification_inactive.__name__))
+			errors.update({'message': _('Server is error. Please try again later.')})
+
+	logger.info(logger_format('<-------  END  ------->', api_notification_inactive.__name__))
 	return Response({
 		'status': status.HTTP_400_BAD_REQUEST,
 		'result': False,
