@@ -5,7 +5,7 @@ from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.utils.translation import ugettext_lazy as _
 
-from apps.commons.utils import logger_format
+from apps.commons.utils import Formatter
 from apps.schedule.models import Schedule
 from apps.notifications.models import GCM, APNS
 
@@ -21,11 +21,12 @@ import logging
 import ssl
 
 logger = logging.getLogger('')
+formatter = Formatter()
 
 
 class Command(BaseCommand):
 	help = _('Push notification to user.')
-
+	
 	def add_arguments(self, parser):
 		parser.add_argument('--serial', action='store', type=str, default=None, help=_('Camera serial'))
 
@@ -143,7 +144,7 @@ class Command(BaseCommand):
 							try:
 								obj_apns.send_message(message=message, sound='default', content_available=1)
 							except Exception as e:
-								logger.error(logger_format(u'{}-{}'.format(obj_apns.registration_id, e), self.push_notification.__name__))
+								logger.error(formatter.logger(message=u'{}-{}'.format(obj_apns.registration_id, e), func_name=self.push_notification.__name__))
 								if 'Unregistered' in str(e):
 									obj_apns.delete()
 								pass
@@ -153,10 +154,10 @@ class Command(BaseCommand):
 							try:
 								obj_gcm.send_message(None, extra=message, use_fcm_notifications=False)
 							except Exception as e:
-								logger.error(logger_format(u'{}-{}'.format(obj_gcm.registration_id, e), self.push_notification.__name__))
+								logger.error(formatter.logger(message=u'{}-{}'.format(obj_gcm.registration_id, e), func_name=self.push_notification.__name__))
 								if 'Unregistered' in str(e):
 									obj_gcm.delete()
 								pass
 				self.stdout.write('Sent a notification to user.')
 		except KeyError as e:
-			logger.error(logger_format(u'{}-{}'.format(user.username, e), self.push_notification.__name__))
+			logger.error(formatter.logger(message=u'{}-{}'.format(user.username, e), func_name=self.push_notification.__name__))

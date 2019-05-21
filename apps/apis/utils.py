@@ -8,7 +8,7 @@ from django.utils.translation import ugettext_lazy as _
 
 from rest_framework import permissions
 
-from apps.commons.utils import logger_format
+from apps.commons.utils import Formatter
 from apps.notifications.models import APNS, GCM
 from .models import Registration
 from ..users.models import Customer
@@ -26,6 +26,7 @@ import logging
 import time
 
 logger = logging.getLogger('')
+formatter = Formatter()
 
 
 def update_or_create_device(device, name, token, username, password, android=False):
@@ -107,7 +108,7 @@ def push_notification(**kwargs):
 					try:
 						obj_apns.send_message(message=message, sound='default', content_available=1)
 					except Exception as e:
-						logger.error(logger_format(u'{}-{}'.format(obj_apns.registration_id, e), push_notification.__name__))
+						logger.error(formatter.logger(message=u'{}-{}'.format(obj_apns.registration_id, e),func_name=push_notification.__name__))
 						if 'Unregistered' in str(e):
 							obj_apns.delete()
 						pass
@@ -117,7 +118,7 @@ def push_notification(**kwargs):
 					try:
 						obj_gcm.send_message(None, extra=message, use_fcm_notifications=False)
 					except Exception as e:
-						logger.error(logger_format(u'{}-{}'.format(obj_gcm.registration_id, e), push_notification.__name__))
+						logger.error(formatter.logger(message=u'{}-{}'.format(obj_gcm.registration_id, e), func_name=push_notification.__name__))
 						if 'Unregistered' in str(e):
 							obj_gcm.delete()
 						pass
