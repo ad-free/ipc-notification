@@ -2,9 +2,11 @@
 from __future__ import absolute_import
 
 from django.conf import settings
+from django.db import connection
 from django.core.management.base import BaseCommand
 from django.utils.translation import ugettext_lazy as _
 
+from apps.apis.serializers import LETTER_TYPE, NOTIFICATION_TYPE
 from apps.commons.utils import Formatter
 from apps.schedule.models import Schedule
 from apps.notifications.models import GCM, APNS
@@ -19,6 +21,7 @@ import json
 import time
 import logging
 import ssl
+import random
 
 logger = logging.getLogger('')
 formatter = Formatter()
@@ -58,50 +61,66 @@ class Command(BaseCommand):
 			self.stdout.write('Connection failed.')
 
 	def on_message(self, client, userdata, message):
-		data = json.loads(message.payload)
-		serial = message.topic.split('/')[1]
-
-		if message.topic.startswith('user'):
-			username = message.topic.split('/')[1]
-			self.status.update({username: data['status']})
-
-		if message.topic.startswith('ipc') and message.topic.endswith('alarm'):
-			obj_schedule = Schedule.objects.filter(serial=serial)
-			if obj_schedule.exists():
-				for schedule in obj_schedule:
-					if schedule.repeat_status:
-						if datetime.now().weekday() in json.loads(schedule.repeat_at):
-							now = timedelta(hours=datetime.now().hour, minutes=datetime.now().minute)
-							if (timedelta(hours=schedule.start_time.hour, minutes=schedule.start_time.minute) <= now) and (
-									now <= timedelta(hours=schedule.end_time.hour, minutes=schedule.end_time.minute)):
+		try:
+			data = json.loads(message.payload)
+			serial = message.topic.split('/')[1]
+			if message.topic.startswith('user'):
+				username = message.topic.split('/')[1]
+				self.status.update({username: data['status']})
+		except Exception as e:
+			logger.error(formatter.logger(message=str(e), func_name=self.on_message.__name__))
+			data = {}
+			serial = ''
+		
+		if {'Status', 'Type'} <= data.keys():
+			logger.error(formatter.logger(message=u'{}-{}-{}-{}'.format(data['StartTime'], data['Address'], data['SerialID'], data['Event']), func_name=data['Type']))
+			if data['Status'] == 'Start' and data['Type'] == 'Alarm':
+				obj_schedule = Schedule.objects.filter(serial=serial)
+				if obj_schedule.exists():
+					for schedule in obj_schedule:
+						if schedule.repeat_status:
+							if datetime.now().weekday() in json.loads(schedule.repeat_at):
+								now = timedelta(hours=datetime.now().hour, minutes=datetime.now().minute)
+								if (timedelta(hours=schedule.start_time.hour, minutes=schedule.start_time.minute) <= now) and (
+										now <= timedelta(hours=schedule.end_time.hour, minutes=schedule.end_time.minute)):
+									for user in schedule.user.all():
+										self.multiple_threading(self.push_notification, self.create_topic, client, user, serial)
+									break
+						else:
+							start_time = datetime.strptime('{date} {hour}:{minutes}'.format(
+								date=schedule.date,
+								hour=schedule.start_time.hour,
+								minutes=schedule.start_time.minute
+							), settings.DATE_TIME_FORMAT)
+							end_time = datetime.strptime('{date} {hour}:{minutes}'.format(
+								date=schedule.date,
+								hour=schedule.end_time.hour,
+								minutes=schedule.end_time.minute
+							), settings.DATE_TIME_FORMAT)
+							if (start_time <= datetime.now()) and (datetime.now() <= end_time):
 								for user in schedule.user.all():
 									self.multiple_threading(self.push_notification, self.create_topic, client, user, serial)
 								break
-					else:
-						start_time = datetime.strptime('{date} {hour}:{minutes}'.format(
-							date=schedule.date,
-							hour=schedule.start_time.hour,
-							minutes=schedule.start_time.minute
-						), settings.DATE_TIME_FORMAT)
-						end_time = datetime.strptime('{date} {hour}:{minutes}'.format(
-							date=schedule.date,
-							hour=schedule.end_time.hour,
-							minutes=schedule.end_time.minute
-						), settings.DATE_TIME_FORMAT)
-						if (start_time <= datetime.now()) and (datetime.now() <= end_time):
-							for user in schedule.user.all():
-								self.multiple_threading(self.push_notification, self.create_topic, client, user, serial)
-							break
 
-	def multiple_threading(self, push_notification, create_topic, client, user, serial):
+	def multiple_threading(self, push_notification, create_topic, client, user, serial, data):
 		self.stdout.write('Start multiple threading.')
+		title_default = [
+			_('Some strangers has been detected...'),
+			_('A moment has been captured by you'),
+			_('Some movement has been recorded...'),
+		]
 		message = message_format(
-			title=u'{}'.format('Thông báo'),
-			body=u'Chúc mừng năm mới {number}.'.format(number=2019),
-			url=u'{}'.format('www.alert.iotc.vn'),
-			acm_id=uuid.uuid1().hex,
-			time=int(time.time()),
-			serial=serial
+				title=u'{}'.format(random.choice(title_default)),
+				body=data['Descrip'] if data['Descrip'] else u'{}'.format('Phát hiện chuyển động.'),
+				url=u'{}'.format('www.prod-alert.iotc.vn'),
+				acm_id=uuid.uuid1().hex,
+				time=int(time.time()),
+				camera_serial=serial,
+				letter_type=LETTER_TYPE[1][0],
+				attachment='',
+				notification_title='',
+				notification_body='',
+				notification_type=NOTIFICATION_TYPE[0][0]
 		)
 		t1 = Thread(target=push_notification, args=(client, user, message))
 		t2 = Thread(target=create_topic, args=(client, user, message))
@@ -161,3 +180,4 @@ class Command(BaseCommand):
 				self.stdout.write('Sent a notification to user.')
 		except KeyError as e:
 			logger.error(formatter.logger(message=u'{}-{}'.format(user.username, e), func_name=self.push_notification.__name__))
+		connection.close()
